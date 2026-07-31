@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CreditCard, Plus, UserPlus } from "lucide-react";
+import { CreditCard, LayoutGrid, List, Plus, UserPlus } from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,6 @@ import {
   formatCurrency,
   formatDate,
   fullName,
-  MEMBERSHIP_STATUS_LABELS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +54,7 @@ function Clients({ module = "clients" }) {
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [clientForm, setClientForm] = useState(EMPTY_CLIENT);
+  const [clientView, setClientView] = useState("grid");
 
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
@@ -238,6 +238,35 @@ function Clients({ module = "clients" }) {
         : "text-muted-foreground hover:bg-muted"
     );
 
+  const clientViewButtonClass = (value) =>
+    cn(
+      "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+      clientView === value
+        ? "bg-background text-foreground shadow-xs"
+        : "text-muted-foreground hover:text-foreground"
+    );
+
+  const renderClientStatusBadge = (client) =>
+    client.activeMembership ? (
+      <Badge className="w-fit shrink-0 border-emerald-500/30 bg-emerald-500/10 text-emerald-500">
+        Activo
+      </Badge>
+    ) : (
+      <Badge variant="outline" className="w-fit shrink-0">
+        Inactivo
+      </Badge>
+    );
+
+  const renderClientMembershipSummary = (client) =>
+    client.activeMembership ? (
+      <p className="text-sm break-words">
+        Membresía: <strong>{client.activeMembership.planName}</strong> · vence{" "}
+        {formatDate(client.activeMembership.endDate)}
+      </p>
+    ) : (
+      <p className="text-sm text-muted-foreground">Sin membresía asignada</p>
+    );
+
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
   const pageTitle = isMembershipsModule ? "Membresías" : "Clientes";
@@ -286,7 +315,31 @@ function Clients({ module = "clients" }) {
 
         {isClientsModule && tab === "clients" && (
           <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div
+                className="grid w-full grid-cols-2 rounded-lg border bg-muted/50 p-1 sm:w-auto"
+                role="group"
+                aria-label="Vista de clientes"
+              >
+                <button
+                  type="button"
+                  className={clientViewButtonClass("list")}
+                  aria-pressed={clientView === "list"}
+                  onClick={() => setClientView("list")}
+                >
+                  <List />
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  className={clientViewButtonClass("grid")}
+                  aria-pressed={clientView === "grid"}
+                  onClick={() => setClientView("grid")}
+                >
+                  <LayoutGrid />
+                  Grid
+                </button>
+              </div>
               <Button
                 className="w-full sm:w-auto"
                 onClick={() => {
@@ -375,7 +428,7 @@ function Clients({ module = "clients" }) {
                   <Skeleton key={index} className="h-24 w-full rounded-xl" />
                 ))}
               </div>
-            ) : clients.length ? (
+            ) : clients.length && clientView === "grid" ? (
               <div className="grid gap-3 lg:grid-cols-2">
                 {clients.map((client) => (
                   <div key={client.id} className="rounded-xl border p-4">
@@ -389,23 +442,60 @@ function Clients({ module = "clients" }) {
                           {client.email || "Sin correo"}
                         </p>
                       </div>
-                      {client.activeMembership ? (
-                        <Badge className="w-fit shrink-0">
-                          {MEMBERSHIP_STATUS_LABELS[client.activeMembership.status]}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="w-fit shrink-0">
-                          Sin membresía
-                        </Badge>
-                      )}
+                      {renderClientStatusBadge(client)}
                     </div>
-                    {client.activeMembership && (
-                      <p className="mt-3 text-sm break-words">
-                        Plan: <strong>{client.activeMembership.planName}</strong> · vence{" "}
-                        {formatDate(client.activeMembership.endDate)}
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                          onClick={() => openEditClient(client)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                          onClick={() => handleDeleteClient(client)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : clients.length ? (
+              <div className="overflow-hidden rounded-xl border">
+                <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-4 border-b bg-muted/50 px-4 py-3 text-xs font-medium uppercase text-muted-foreground md:grid">
+                  <span>Cliente</span>
+                  <span>Contacto</span>
+                  <span>Estado</span>
+                  <span className="text-right">Acciones</span>
+                </div>
+                {clients.map((client) => (
+                  <div
+                    key={client.id}
+                    className="grid gap-3 border-b p-4 last:border-b-0 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
+                  >
+                    <div className="min-w-0">
+                      <h3 className="font-semibold">{fullName(client)}</h3>
+                      <p className="text-sm text-muted-foreground break-words">
+                        {client.documentId || "Sin documento"}
                       </p>
-                    )}
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    </div>
+                    <div className="min-w-0 text-sm text-muted-foreground">
+                      <p className="break-words">{client.phone || "Sin teléfono"}</p>
+                      <p className="break-all">{client.email || "Sin correo"}</p>
+                    </div>
+                    <div className="min-w-0">
+                      {renderClientStatusBadge(client)}
+                      <div className="mt-2">{renderClientMembershipSummary(client)}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 md:justify-end">
                       <Button
                         size="sm"
                         variant="outline"
