@@ -40,6 +40,7 @@ com/example/gym/dto/AssignMembershipRequest.class
 com/example/gym/dto/UpdateClientRequest.class
 com/example/gym/controller/ClientController.class
 com/example/gym/dto/CreateClientRequest.class
+com/example/gym/service/DeleteConfirmationService.class
 com/example/gym/controller/MembershipController.class
 com/example/gym/security/JwtService.class
 com/example/gym/service/DashboardService.class

@@ -77,10 +77,10 @@ export async function updateClient(id, data, onUnauthorized) {
   );
 }
 
-export async function deleteClient(id, onUnauthorized) {
+export async function deleteClient(id, confirmationPassword, onUnauthorized) {
   return apiFetch(
     `/api/clients/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", headers: { "X-Confirm-Password": confirmationPassword } },
     onUnauthorized
   );
 }
@@ -105,10 +105,10 @@ export async function updateMembershipPlan(id, data, onUnauthorized) {
   );
 }
 
-export async function deleteMembershipPlan(id, onUnauthorized) {
+export async function deleteMembershipPlan(id, confirmationPassword, onUnauthorized) {
   return apiFetch(
     `/api/membership-plans/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", headers: { "X-Confirm-Password": confirmationPassword } },
     onUnauthorized
   );
 }
@@ -141,10 +141,10 @@ export async function updateProduct(id, data, onUnauthorized) {
   );
 }
 
-export async function deleteProduct(id, onUnauthorized) {
+export async function deleteProduct(id, confirmationPassword, onUnauthorized) {
   return apiFetch(
     `/api/products/${id}`,
-    { method: "DELETE" },
+    { method: "DELETE", headers: { "X-Confirm-Password": confirmationPassword } },
     onUnauthorized
   );
 }
@@ -173,6 +173,14 @@ export async function updateUser(id, data, onUnauthorized) {
   return apiFetch(
     `/api/users/${id}`,
     { method: "PUT", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
+export async function deleteUser(id, confirmationPassword, onUnauthorized) {
+  return apiFetch(
+    `/api/users/${id}`,
+    { method: "DELETE", headers: { "X-Confirm-Password": confirmationPassword } },
     onUnauthorized
   );
 }

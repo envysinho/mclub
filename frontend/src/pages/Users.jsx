@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { createUser, listUsers, updateUser } from "@/lib/api";
+import { createUser, deleteUser, listUsers, updateUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const ROLE_LABELS = {
@@ -25,6 +26,7 @@ const ROLE_LABELS = {
 
 const EMPTY_USER = {
   username: "",
+  name: "",
   password: "",
   role: "USER",
   enabled: true,
@@ -37,9 +39,13 @@ function Users() {
   const [error, setError] = useState(null);
   const [formError, setFormError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [userForm, setUserForm] = useState(EMPTY_USER);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -63,28 +69,65 @@ function Users() {
 
   const resetForm = () => {
     setUserForm(EMPTY_USER);
+    setEditingUser(null);
     setFormError(null);
     setShowForm(false);
   };
 
-  const handleCreateUser = async (event) => {
+  const openCreateForm = () => {
+    setUserForm(EMPTY_USER);
+    setEditingUser(null);
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const openEditForm = (user) => {
+    setUserForm({
+      username: user.username,
+      name: user.name ?? "",
+      password: "",
+      role: user.role,
+      enabled: user.enabled,
+    });
+    setEditingUser(user);
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError(null);
     setIsSubmitting(true);
 
     try {
-      await createUser(userForm, handleUnauthorized);
+      if (editingUser) {
+        await updateUser(
+          editingUser.id,
+          {
+            username: userForm.username,
+            name: userForm.name,
+            role: userForm.role,
+            enabled: userForm.enabled,
+            password: userForm.password,
+          },
+          handleUnauthorized
+        );
+      } else {
+        await createUser(userForm, handleUnauthorized);
+      }
       resetForm();
       await loadUsers();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al crear usuario");
+      setFormError(err instanceof Error ? err.message : "Error al guardar usuario");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleUpdateUser = async (user, patch) => {
+  const handleQuickUpdate = async (user, patch) => {
     const payload = {
+      username: user.username,
+      name: user.name,
       role: patch.role ?? user.role,
       enabled: patch.enabled ?? user.enabled,
       password: "",
@@ -109,12 +152,28 @@ function Users() {
     }
   };
 
+  const handleDeleteUser = async (confirmationPassword) => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteUser(deleteTarget.id, confirmationPassword, handleUnauthorized);
+      setDeleteTarget(null);
+      await loadUsers();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Error al eliminar usuario");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const renderEnabledSwitch = (user) => (
     <button
       type="button"
       role="switch"
       aria-checked={user.enabled}
-      aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${user.username}`}
+      aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${user.name ?? user.username}`}
       disabled={updatingUserId === user.id}
       className={cn(
         "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors disabled:opacity-50",
@@ -122,7 +181,7 @@ function Users() {
           ? "border-emerald-500/30 bg-emerald-500/20"
           : "border-border bg-muted/50"
       )}
-      onClick={() => handleUpdateUser(user, { enabled: !user.enabled })}
+      onClick={() => handleQuickUpdate(user, { enabled: !user.enabled })}
     >
       <span
         className={cn(
@@ -147,7 +206,7 @@ function Users() {
 
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button className="w-full sm:w-auto" onClick={() => setShowForm(true)}>
+            <Button className="w-full sm:w-auto" onClick={openCreateForm}>
               <UserPlus />
               Nuevo usuario
             </Button>
@@ -165,12 +224,25 @@ function Users() {
           >
             <SheetContent className="w-full overflow-y-auto sm:max-w-md">
               <SheetHeader className="border-b pr-12">
-                <SheetTitle>Nuevo usuario</SheetTitle>
+                <SheetTitle>{editingUser ? "Editar usuario" : "Nuevo usuario"}</SheetTitle>
                 <SheetDescription>
-                  Crea una cuenta y asigna su rol dentro del sistema.
+                  {editingUser
+                    ? "Actualiza sus datos, rol o estado de acceso."
+                    : "Crea una cuenta y asigna su rol dentro del sistema."}
                 </SheetDescription>
               </SheetHeader>
-              <form onSubmit={handleCreateUser} className="grid gap-4 px-4 pb-4">
+              <form onSubmit={handleSubmit} className="grid gap-4 px-4 pb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input
+                    id="name"
+                    value={userForm.name}
+                    onChange={(event) =>
+                      setUserForm({ ...userForm, name: event.target.value })
+                    }
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="username">Usuario</Label>
                   <Input
@@ -183,7 +255,9 @@ function Users() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña</Label>
+                  <Label htmlFor="password">
+                    {editingUser ? "Nueva contraseña" : "Contraseña"}
+                  </Label>
                   <Input
                     id="password"
                     type="password"
@@ -191,7 +265,8 @@ function Users() {
                     onChange={(event) =>
                       setUserForm({ ...userForm, password: event.target.value })
                     }
-                    required
+                    required={!editingUser}
+                    placeholder={editingUser ? "Dejar vacío para mantenerla" : undefined}
                   />
                 </div>
                 <div className="space-y-2">
@@ -206,6 +281,34 @@ function Users() {
                     <option value="ADMIN">Admin</option>
                     <option value="SUDO">Sudo</option>
                   </select>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-3">
+                  <div>
+                    <Label htmlFor="userEnabled">Estado</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {userForm.enabled ? "Activo" : "Inactivo"}
+                    </p>
+                  </div>
+                  <button
+                    id="userEnabled"
+                    type="button"
+                    role="switch"
+                    aria-checked={userForm.enabled}
+                    className={cn(
+                      "inline-flex h-7 w-12 items-center rounded-full border p-0.5 transition-colors",
+                      userForm.enabled
+                        ? "border-emerald-500/30 bg-emerald-500/20"
+                        : "border-border bg-muted/50"
+                    )}
+                    onClick={() => setUserForm({ ...userForm, enabled: !userForm.enabled })}
+                  >
+                    <span
+                      className={cn(
+                        "size-5 rounded-full bg-foreground shadow-sm transition-transform",
+                        userForm.enabled ? "translate-x-5" : "translate-x-0"
+                      )}
+                    />
+                  </button>
                 </div>
                 {formError && <p className="text-sm text-destructive">{formError}</p>}
                 <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -231,28 +334,45 @@ function Users() {
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto] md:items-center md:gap-4"
+                  className="grid gap-3 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(14rem,1fr)_8rem_7rem_auto] md:items-center md:gap-4"
                 >
                   <div className="min-w-0">
-                    <h3 className="font-semibold">{user.username}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {user.enabled ? "Activo" : "Inactivo"}
-                    </p>
+                    <h3 className="truncate font-semibold">{user.name ?? user.username}</h3>
+                    <p className="truncate text-sm text-muted-foreground">{user.username}</p>
                   </div>
                   <Badge variant="outline" className="w-fit">
                     {ROLE_LABELS[user.role] ?? user.role}
                   </Badge>
-                  {renderEnabledSwitch(user)}
-                  <select
-                    className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-                    value={user.role}
-                    disabled={updatingUserId === user.id}
-                    onChange={(event) => handleUpdateUser(user, { role: event.target.value })}
-                  >
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUDO">Sudo</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    {renderEnabledSwitch(user)}
+                    <span className="text-sm text-muted-foreground">
+                      {user.enabled ? "Activo" : "Inactivo"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditForm(user)}
+                    >
+                      <Pencil className="size-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setDeleteTarget(user);
+                        setDeleteError(null);
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                      Eliminar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,6 +381,21 @@ function Users() {
           )}
         </div>
       </PageCard>
+
+      <DeleteConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar usuario"
+        description={`Confirma tu contraseña para eliminar a ${
+          deleteTarget?.name ?? deleteTarget?.username ?? "este usuario"
+        }.`}
+        error={deleteError}
+        isSubmitting={isDeleting}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
+        onConfirm={handleDeleteUser}
+      />
     </div>
   );
 }

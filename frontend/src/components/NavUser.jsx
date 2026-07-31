@@ -13,8 +13,14 @@ const ROLE_LABELS = {
   USER: "Usuario",
 };
 
-function getInitials(username) {
-  return username.slice(0, 2).toUpperCase();
+function getInitials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function NavUser({ user, onLogout }) {
@@ -23,7 +29,8 @@ function NavUser({ user, onLogout }) {
   if (!user) return null;
 
   const roleLabel = ROLE_LABELS[user.role] ?? user.role;
-  const initials = getInitials(user.username);
+  const displayName = user.name || user.username;
+  const initials = getInitials(displayName);
   const showTooltip = state === "collapsed" && !isMobile;
 
   return (
@@ -32,7 +39,7 @@ function NavUser({ user, onLogout }) {
         <div className="flex w-full items-center gap-1">
           <SidebarMenuButton
             size="lg"
-            tooltip={showTooltip ? user.username : undefined}
+            tooltip={showTooltip ? displayName : undefined}
             className="min-w-0 flex-1"
             render={<div />}
           >
@@ -40,7 +47,7 @@ function NavUser({ user, onLogout }) {
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.username}</span>
+              <span className="truncate font-medium">{displayName}</span>
               <span className="truncate text-xs text-sidebar-foreground/70">{roleLabel}</span>
             </div>
           </SidebarMenuButton>

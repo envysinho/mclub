@@ -44,14 +44,14 @@ public class UserService {
 
     @Transactional
     public void seedAdminIfMissing(String username, String password) {
-        seedUserIfMissing(username, password, Role.ADMIN);
+        seedUserIfMissing(username, password, username, Role.ADMIN);
     }
 
     @Transactional
     public void seedDefaultUsers() {
-        seedUserIfMissing("sudo", "sudo123", Role.SUDO);
-        seedUserIfMissing("admin", "admin123", Role.ADMIN);
-        seedUserIfMissing("user", "user123", Role.USER);
+        seedUserIfMissing("sudo", "sudo123", "Usuario Sudo", Role.SUDO);
+        seedUserIfMissing("admin", "admin123", "Administrador", Role.ADMIN);
+        seedUserIfMissing("user", "user123", "Recepcionista", Role.USER);
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +70,7 @@ public class UserService {
 
         User user = new User();
         user.setUsername(username);
+        user.setName(request.name().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(request.role());
         user.setEnabled(request.enabled() == null || request.enabled());
@@ -81,6 +82,20 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
+        ensureActiveSudoWillRemain(user, request.role(), request.enabled());
+
+        if (request.username() != null && !request.username().isBlank()) {
+            String username = request.username().trim();
+            userRepository.findByUsername(username).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "El usuario ya existe");
+                }
+            });
+            user.setUsername(username);
+        }
+        if (request.name() != null && !request.name().isBlank()) {
+            user.setName(request.name().trim());
+        }
         user.setRole(request.role());
         if (request.enabled() != null) {
             user.setEnabled(request.enabled());
@@ -91,16 +106,49 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    private void seedUserIfMissing(String username, String password, Role role) {
-        if (userRepository.findByUsername(username).isPresent()) {
+    @Transactional
+    public void delete(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        ensureCanDelete(user);
+        userRepository.delete(user);
+    }
+
+    private void seedUserIfMissing(String username, String password, String name, Role role) {
+        var existing = userRepository.findByUsername(username);
+        if (existing.isPresent()) {
+            User user = existing.get();
+            if (user.getName() == null || user.getName().isBlank() || user.getName().equals(user.getUsername())) {
+                user.setName(name);
+                userRepository.save(user);
+            }
             return;
         }
 
         User user = new User();
         user.setUsername(username);
+        user.setName(name);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(role);
         user.setEnabled(true);
         userRepository.save(user);
+    }
+
+    private void ensureActiveSudoWillRemain(User user, Role nextRole, Boolean nextEnabled) {
+        boolean currentlyActiveSudo = user.getRole() == Role.SUDO && user.isEnabled();
+        Role resolvedRole = nextRole == null ? user.getRole() : nextRole;
+        boolean resolvedEnabled = nextEnabled == null ? user.isEnabled() : nextEnabled;
+        boolean willBeActiveSudo = resolvedRole == Role.SUDO && resolvedEnabled;
+
+        if (currentlyActiveSudo && !willBeActiveSudo && userRepository.countByRoleAndEnabledTrue(Role.SUDO) <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe existir al menos un usuario SUDO activo");
+        }
+    }
+
+    private void ensureCanDelete(User user) {
+        if (user.getRole() == Role.SUDO && user.isEnabled() && userRepository.countByRoleAndEnabledTrue(Role.SUDO) <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe existir al menos un usuario SUDO");
+        }
     }
 }

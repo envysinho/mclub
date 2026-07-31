@@ -10,4 +10,5 @@ import com.example.gym.model.Role;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     long countByRole(Role role);
+    long countByRoleAndEnabledTrue(Role role);
 }

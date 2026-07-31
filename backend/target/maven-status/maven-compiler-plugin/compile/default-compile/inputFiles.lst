@@ -49,6 +49,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/security/UserPrincipal.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ClientService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/DashboardService.java
+/home/envy/gym/backend/src/main/java/com/example/gym/service/DeleteConfirmationService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipStatusService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MovementService.java

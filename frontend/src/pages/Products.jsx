@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { LayoutGrid, List, PackagePlus } from "lucide-react";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,9 @@ function Products() {
   const [error, setError] = useState(null);
   const [formError, setFormError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -113,13 +117,17 @@ function Products() {
     }
   };
 
-  const handleDelete = async (product) => {
-    if (!window.confirm(`¿Eliminar "${product.name}"?`)) return;
+  const handleDelete = async (product, confirmationPassword) => {
+    setDeleteError(null);
+    setIsDeleting(true);
     try {
-      await deleteProduct(product.id, handleUnauthorized);
+      await deleteProduct(product.id, confirmationPassword, handleUnauthorized);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar producto");
+      setDeleteError(err instanceof Error ? err.message : "Error al eliminar producto");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -155,6 +163,19 @@ function Products() {
             {error}
           </p>
         )}
+
+        <DeleteConfirmationDialog
+          open={Boolean(deleteTarget)}
+          title="Eliminar producto"
+          description={`Confirma tu contraseña para eliminar "${deleteTarget?.name}".`}
+          error={deleteError}
+          isSubmitting={isDeleting}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }}
+          onConfirm={(password) => handleDelete(deleteTarget, password)}
+        />
 
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -325,7 +346,7 @@ function Products() {
                         size="sm"
                         variant="outline"
                         className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => handleDelete(product)}
+                        onClick={() => setDeleteTarget(product)}
                       >
                         Eliminar
                       </Button>
@@ -367,7 +388,7 @@ function Products() {
                       size="sm"
                       variant="outline"
                       className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(product)}
+                      onClick={() => setDeleteTarget(product)}
                     >
                       Eliminar
                     </Button>

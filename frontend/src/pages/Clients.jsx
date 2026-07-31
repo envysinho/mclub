@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List, Plus, UserPlus } from "lucide-react";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,9 @@ function Clients({ module = "clients" }) {
   const [error, setError] = useState(null);
   const [formError, setFormError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -227,13 +231,17 @@ function Clients({ module = "clients" }) {
     }
   };
 
-  const handleDeleteClient = async (client) => {
-    if (!window.confirm(`¿Eliminar a ${fullName(client)}?`)) return;
+  const handleDeleteClient = async (client, confirmationPassword) => {
+    setDeleteError(null);
+    setIsDeleting(true);
     try {
-      await deleteClient(client.id, handleUnauthorized);
+      await deleteClient(client.id, confirmationPassword, handleUnauthorized);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar cliente");
+      setDeleteError(err instanceof Error ? err.message : "Error al eliminar cliente");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -272,13 +280,17 @@ function Clients({ module = "clients" }) {
     }
   };
 
-  const handleDeletePlan = async (plan) => {
-    if (!window.confirm(`¿Eliminar el plan "${plan.name}"?`)) return;
+  const handleDeletePlan = async (plan, confirmationPassword) => {
+    setDeleteError(null);
+    setIsDeleting(true);
     try {
-      await deleteMembershipPlan(plan.id, handleUnauthorized);
+      await deleteMembershipPlan(plan.id, confirmationPassword, handleUnauthorized);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar plan");
+      setDeleteError(err instanceof Error ? err.message : "Error al eliminar plan");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -377,6 +389,33 @@ function Clients({ module = "clients" }) {
             {error}
           </p>
         )}
+
+        <DeleteConfirmationDialog
+          open={Boolean(deleteTarget)}
+          title={
+            deleteTarget?.type === "client"
+              ? "Eliminar cliente"
+              : "Eliminar plan"
+          }
+          description={
+            deleteTarget?.type === "client"
+              ? `Confirma tu contraseña para eliminar a ${fullName(deleteTarget.item)}.`
+              : `Confirma tu contraseña para eliminar el plan "${deleteTarget?.item?.name}".`
+          }
+          error={deleteError}
+          isSubmitting={isDeleting}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }}
+          onConfirm={(password) => {
+            if (deleteTarget?.type === "client") {
+              handleDeleteClient(deleteTarget.item, password);
+            } else if (deleteTarget?.type === "plan") {
+              handleDeletePlan(deleteTarget.item, password);
+            }
+          }}
+        />
 
         {isClientsModule && (
           <div className="space-y-4">
@@ -566,7 +605,7 @@ function Clients({ module = "clients" }) {
                           size="sm"
                           variant="outline"
                           className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                          onClick={() => handleDeleteClient(client)}
+                          onClick={() => setDeleteTarget({ type: "client", item: client })}
                         >
                           Eliminar
                         </Button>
@@ -602,7 +641,7 @@ function Clients({ module = "clients" }) {
                         size="sm"
                         variant="outline"
                         className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => handleDeleteClient(client)}
+                        onClick={() => setDeleteTarget({ type: "client", item: client })}
                       >
                         Eliminar
                       </Button>
@@ -784,7 +823,7 @@ function Clients({ module = "clients" }) {
                           size="sm"
                           variant="outline"
                           className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                          onClick={() => handleDeletePlan(plan)}
+                          onClick={() => setDeleteTarget({ type: "plan", item: plan })}
                         >
                           Eliminar
                         </Button>
@@ -825,7 +864,7 @@ function Clients({ module = "clients" }) {
                         size="sm"
                         variant="outline"
                         className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => handleDeletePlan(plan)}
+                        onClick={() => setDeleteTarget({ type: "plan", item: plan })}
                       >
                         Eliminar
                       </Button>
