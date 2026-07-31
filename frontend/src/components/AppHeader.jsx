@@ -1,5 +1,4 @@
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 function AppHeader({ title, description, isDark, onToggleTheme }) {
@@ -16,15 +15,29 @@ function AppHeader({ title, description, isDark, onToggleTheme }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleTheme}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isDark}
           aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           title={isDark ? "Modo claro" : "Modo oscuro"}
+          onClick={onToggleTheme}
+          className="relative inline-flex h-8 w-16 shrink-0 items-center rounded-full border bg-muted/70 p-1 text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {isDark ? <Sun /> : <Moon />}
-        </Button>
+          <span className="absolute left-2 flex size-4 items-center justify-center">
+            <Sun className="size-3.5" />
+          </span>
+          <span className="absolute right-2 flex size-4 items-center justify-center">
+            <Moon className="size-3.5" />
+          </span>
+          <span
+            className={`relative z-10 flex size-6 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-transform ${
+              isDark ? "translate-x-8" : "translate-x-0"
+            }`}
+          >
+            {isDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+          </span>
+        </button>
       </div>
     </header>
   );
