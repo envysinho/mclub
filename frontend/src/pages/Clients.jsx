@@ -373,17 +373,10 @@ function Clients({ module = "clients" }) {
   const isMembershipsModule = module === "memberships";
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
   const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
-  const pageTitle = isMembershipsModule ? "Membresías" : "Clientes";
-  const pageDescription = isMembershipsModule
-    ? "Administra los planes de membresía del gimnasio."
-    : "Administra el registro de clientes del gimnasio.";
 
   return (
     <div className="flex flex-col gap-4">
-      <PageCard
-        title={pageTitle}
-        description={pageDescription}
-      >
+      <PageCard>
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
             {error}

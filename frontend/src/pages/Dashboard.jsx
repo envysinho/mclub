@@ -199,16 +199,7 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageCard
-        title="Dashboard"
-        description="Resumen del gimnasio y movimientos recientes."
-        action={
-          <Button onClick={() => setShowSaleSheet(true)}>
-            <ShoppingCart />
-            Nueva venta
-          </Button>
-        }
-      >
+      <PageCard>
         <Sheet
           open={showSaleSheet}
           onOpenChange={(open) => {
@@ -530,6 +521,17 @@ function Dashboard() {
           </p>
         )}
       </PageCard>
+
+      <Button
+        type="button"
+        aria-label="Nueva venta"
+        title="Nueva venta"
+        className="fixed bottom-5 right-5 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
+        onClick={() => setShowSaleSheet(true)}
+      >
+        <ShoppingCart className="size-5" />
+        <span className="hidden sm:inline">Nueva venta</span>
+      </Button>
     </div>
   );
 }

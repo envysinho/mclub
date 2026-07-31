@@ -194,10 +194,7 @@ function Users() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageCard
-        title="Usuarios"
-        description="Administra accesos, roles y estado de los usuarios."
-      >
+      <PageCard>
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
             {error}

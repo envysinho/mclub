@@ -11,6 +11,29 @@ import Products from "@/pages/Products";
 import Users from "@/pages/Users";
 import Login from "@/pages/Login";
 
+const PAGE_META = {
+  dashboard: {
+    title: "Dashboard",
+    description: "Resumen del gimnasio y movimientos recientes.",
+  },
+  clients: {
+    title: "Clientes",
+    description: "Administra el registro de clientes del gimnasio.",
+  },
+  memberships: {
+    title: "Membresías",
+    description: "Administra los planes de membresía del gimnasio.",
+  },
+  products: {
+    title: "Productos",
+    description: "Administra el catálogo de productos del gimnasio.",
+  },
+  users: {
+    title: "Usuarios",
+    description: "Administra accesos, roles y estado de los usuarios.",
+  },
+};
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const { isDark, toggleTheme } = useTheme();
@@ -36,12 +59,19 @@ function AppContent() {
     return <Login />;
   }
 
+  const currentPageMeta = PAGE_META[currentPage] ?? PAGE_META.dashboard;
+
   return (
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar currentPage={currentPage} onNavigate={setCurrentPage} />
         <SidebarInset>
-          <AppHeader isDark={isDark} onToggleTheme={toggleTheme} />
+          <AppHeader
+            title={currentPageMeta.title}
+            description={currentPageMeta.description}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+          />
           <div className="flex flex-1 flex-col gap-4 p-4">{renderPage()}</div>
         </SidebarInset>
       </SidebarProvider>

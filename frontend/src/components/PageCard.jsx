@@ -8,20 +8,28 @@ import {
 import { cn } from "@/lib/utils";
 
 function PageCard({ title, description, children, action }) {
+  const hasHeaderText = Boolean(title || description);
+  const hasHeader = hasHeaderText || action;
+
   return (
     <Card>
-      <CardHeader
-        className={cn(
-          "gap-4 space-y-0",
-          action && "flex flex-col sm:flex-row sm:items-start sm:justify-between"
-        )}
-      >
-        <div className="min-w-0 space-y-1">
-          <CardTitle className="text-xl font-semibold sm:text-2xl">{title}</CardTitle>
-          {description && <CardDescription>{description}</CardDescription>}
-        </div>
-        {action && <div className="w-full shrink-0 sm:w-auto">{action}</div>}
-      </CardHeader>
+      {hasHeader && (
+        <CardHeader
+          className={cn(
+            "gap-4 space-y-0",
+            action && "flex flex-col sm:flex-row sm:items-start sm:justify-between",
+            action && !hasHeaderText && "items-end"
+          )}
+        >
+          {hasHeaderText && (
+            <div className="min-w-0 space-y-1">
+              {title && <CardTitle className="text-xl font-semibold sm:text-2xl">{title}</CardTitle>}
+              {description && <CardDescription>{description}</CardDescription>}
+            </div>
+          )}
+          {action && <div className="w-full shrink-0 sm:w-auto">{action}</div>}
+        </CardHeader>
+      )}
       <CardContent>{children}</CardContent>
     </Card>
   );

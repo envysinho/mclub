@@ -154,10 +154,7 @@ function Products() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageCard
-        title="Productos"
-        description="Administra el catálogo de productos del gimnasio."
-      >
+      <PageCard>
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
             {error}

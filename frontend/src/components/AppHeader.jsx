@@ -2,11 +2,18 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-function AppHeader({ isDark, onToggleTheme }) {
+function AppHeader({ title, description, isDark, onToggleTheme }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
       <SidebarTrigger className="-ml-1 md:hidden" />
-      <span className="font-semibold shrink-0">MClub Gym</span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <span className="shrink-0 font-semibold">{title}</span>
+        {description && (
+          <span className="min-w-0 truncate text-sm text-muted-foreground">
+            {description}
+          </span>
+        )}
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         <Button
