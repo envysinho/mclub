@@ -1,4 +1,4 @@
-import { CreditCard, Dumbbell, LayoutDashboard, Package, ShieldCheck, Users } from "lucide-react";
+import { CreditCard, LayoutDashboard, Package, ShieldCheck, Users } from "lucide-react";
 import NavUser from "@/components/NavUser";
 import {
   Sidebar,
@@ -10,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -43,15 +42,12 @@ function AppSidebar({ currentPage, onNavigate }) {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="none">
       <SidebarHeader className="overflow-hidden border-b border-sidebar-border">
-        <div className="flex h-12 min-w-0 items-center gap-3 overflow-hidden px-2">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Dumbbell className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden transition-[opacity,max-width] duration-200 ease-linear group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">
+        <div className="flex h-[39px] min-w-0 items-center overflow-hidden px-4">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-[10.3px] text-sidebar-foreground/70 tracking-normal">
+              <span className="truncate text-[10.3px] tracking-normal text-sidebar-foreground/70">
                 Gestión integral
               </span>
               <strong className="truncate text-sm font-semibold">MClub Gym</strong>
@@ -85,8 +81,6 @@ function AppSidebar({ currentPage, onNavigate }) {
       <SidebarFooter>
         <NavUser user={user} onLogout={handleLogout} />
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 }
