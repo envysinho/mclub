@@ -7,5 +7,6 @@ public record CreateClientRequest(
         @NotBlank(message = "Los apellidos son obligatorios") String lastName,
         String email,
         String phone,
-        String documentId) {
+        String documentId,
+        Boolean active) {
 }

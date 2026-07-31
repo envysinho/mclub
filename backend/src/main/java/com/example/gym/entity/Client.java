@@ -39,6 +39,9 @@ public class Client {
     @Column(name = "document_id")
     private String documentId;
 
+    @Column
+    private Boolean active = true;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ClientMembership> memberships = new ArrayList<>();
 
@@ -92,6 +95,14 @@ public class Client {
 
     public void setDocumentId(String documentId) {
         this.documentId = documentId;
+    }
+
+    public boolean isActive() {
+        return active == null || active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     public List<ClientMembership> getMemberships() {

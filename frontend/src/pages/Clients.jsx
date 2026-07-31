@@ -31,6 +31,7 @@ const EMPTY_CLIENT = {
   email: "",
   phone: "",
   documentId: "",
+  active: true,
 };
 
 const EMPTY_PLAN = {
@@ -55,6 +56,7 @@ function Clients({ module = "clients" }) {
   const [editingClient, setEditingClient] = useState(null);
   const [clientForm, setClientForm] = useState(EMPTY_CLIENT);
   const [clientView, setClientView] = useState("grid");
+  const [updatingClientStatusId, setUpdatingClientStatusId] = useState(null);
 
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
@@ -117,6 +119,7 @@ function Clients({ module = "clients" }) {
       email: client.email ?? "",
       phone: client.phone ?? "",
       documentId: client.documentId ?? "",
+      active: client.active !== false,
     });
     setShowClientForm(true);
     setFormError(null);
@@ -197,6 +200,41 @@ function Clients({ module = "clients" }) {
     }
   };
 
+  const handleClientStatusChange = async (client) => {
+    const nextActive = !(client.active !== false);
+    setUpdatingClientStatusId(client.id);
+    setError(null);
+    setClients((currentClients) =>
+      currentClients.map((currentClient) =>
+        currentClient.id === client.id ? { ...currentClient, active: nextActive } : currentClient
+      )
+    );
+
+    try {
+      await updateClient(
+        client.id,
+        {
+          firstName: client.firstName,
+          lastName: client.lastName,
+          email: client.email ?? "",
+          phone: client.phone ?? "",
+          documentId: client.documentId ?? "",
+          active: nextActive,
+        },
+        handleUnauthorized
+      );
+    } catch (err) {
+      setClients((currentClients) =>
+        currentClients.map((currentClient) =>
+          currentClient.id === client.id ? { ...currentClient, active: !nextActive } : currentClient
+        )
+      );
+      setError(err instanceof Error ? err.message : "Error al actualizar estado del cliente");
+    } finally {
+      setUpdatingClientStatusId(null);
+    }
+  };
+
   const handleDeletePlan = async (plan) => {
     if (!window.confirm(`¿Eliminar el plan "${plan.name}"?`)) return;
     try {
@@ -247,7 +285,7 @@ function Clients({ module = "clients" }) {
     );
 
   const renderClientStatusBadge = (client) =>
-    client.activeMembership ? (
+    client.active !== false ? (
       <Badge className="w-fit shrink-0 border-emerald-500/30 bg-emerald-500/10 text-emerald-500">
         Activo
       </Badge>
@@ -266,6 +304,35 @@ function Clients({ module = "clients" }) {
     ) : (
       <p className="text-sm text-muted-foreground">Sin membresía asignada</p>
     );
+
+  const renderClientStatusSwitch = (client) => {
+    const isActive = client.active !== false;
+    const isUpdating = updatingClientStatusId === client.id;
+
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isActive}
+        aria-label={`${isActive ? "Inactivar" : "Activar"} a ${fullName(client)}`}
+        disabled={isUpdating}
+        className={cn(
+          "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors disabled:opacity-50",
+          isActive
+            ? "border-emerald-500/30 bg-emerald-500/20"
+            : "border-border bg-muted/50"
+        )}
+        onClick={() => handleClientStatusChange(client)}
+      >
+        <span
+          className={cn(
+            "size-5 rounded-full bg-foreground shadow-sm transition-transform",
+            isActive ? "translate-x-5" : "translate-x-0"
+          )}
+        />
+      </button>
+    );
+  };
 
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
@@ -381,14 +448,6 @@ function Clients({ module = "clients" }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="documentId">Documento</Label>
-                  <Input
-                    id="documentId"
-                    value={clientForm.documentId}
-                    onChange={(e) => setClientForm({ ...clientForm, documentId: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="phone">Teléfono</Label>
                   <Input
                     id="phone"
@@ -436,7 +495,7 @@ function Clients({ module = "clients" }) {
                       <div className="min-w-0">
                         <h3 className="font-semibold">{fullName(client)}</h3>
                         <p className="text-sm text-muted-foreground break-words">
-                          {client.documentId || "Sin documento"} · {client.phone || "Sin teléfono"}
+                          {client.phone || "Sin teléfono"}
                         </p>
                         <p className="text-sm text-muted-foreground break-all">
                           {client.email || "Sin correo"}
@@ -470,32 +529,26 @@ function Clients({ module = "clients" }) {
               </div>
             ) : clients.length ? (
               <div className="overflow-hidden rounded-xl border">
-                <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-4 border-b bg-muted/50 px-4 py-3 text-xs font-medium uppercase text-muted-foreground md:grid">
-                  <span>Cliente</span>
-                  <span>Contacto</span>
-                  <span>Estado</span>
-                  <span className="text-right">Acciones</span>
-                </div>
                 {clients.map((client) => (
                   <div
                     key={client.id}
-                    className="grid gap-3 border-b p-4 last:border-b-0 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
+                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
                   >
-                    <div className="min-w-0">
-                      <h3 className="font-semibold">{fullName(client)}</h3>
-                      <p className="text-sm text-muted-foreground break-words">
-                        {client.documentId || "Sin documento"}
-                      </p>
+                    <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(120px,auto)_minmax(0,1fr)] md:items-center md:gap-6">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold">{fullName(client)}</h3>
+                      </div>
+                      <div className="min-w-0 text-sm text-muted-foreground md:flex md:flex-wrap md:items-center md:gap-x-2">
+                        <span className="break-words">{client.phone || "Sin teléfono"}</span>
+                        <span className="hidden md:inline">·</span>
+                        <span className="block break-all md:inline">{client.email || "Sin correo"}</span>
+                      </div>
                     </div>
-                    <div className="min-w-0 text-sm text-muted-foreground">
-                      <p className="break-words">{client.phone || "Sin teléfono"}</p>
-                      <p className="break-all">{client.email || "Sin correo"}</p>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
                     </div>
-                    <div className="min-w-0">
-                      {renderClientStatusBadge(client)}
-                      <div className="mt-2">{renderClientMembershipSummary(client)}</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 md:justify-end">
+                    <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
+                      {renderClientStatusSwitch(client)}
                       <Button
                         size="sm"
                         variant="outline"
@@ -506,8 +559,8 @@ function Clients({ module = "clients" }) {
                       </Button>
                       <Button
                         size="sm"
-                        variant="destructive"
-                        className="flex-1 sm:flex-none"
+                        variant="outline"
+                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
                         onClick={() => handleDeleteClient(client)}
                       >
                         Eliminar

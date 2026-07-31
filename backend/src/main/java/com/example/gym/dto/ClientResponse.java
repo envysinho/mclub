@@ -13,6 +13,7 @@ public record ClientResponse(
         String email,
         String phone,
         String documentId,
+        boolean active,
         ActiveMembershipResponse activeMembership,
         Instant createdAt) {
 
@@ -32,6 +33,7 @@ public record ClientResponse(
                 client.getEmail(),
                 client.getPhone(),
                 client.getDocumentId(),
+                client.isActive(),
                 membershipResponse,
                 client.getCreatedAt());
     }

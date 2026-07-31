@@ -51,6 +51,7 @@ public class ClientService {
         Client client = new Client();
         applyFields(client, request.firstName(), request.lastName(),
                 request.email(), request.phone(), request.documentId());
+        client.setActive(request.active() == null || request.active());
         return toResponse(clientRepository.save(client));
     }
 
@@ -59,6 +60,9 @@ public class ClientService {
         Client client = getClientOrThrow(id);
         applyFields(client, request.firstName(), request.lastName(),
                 request.email(), request.phone(), request.documentId());
+        if (request.active() != null) {
+            client.setActive(request.active());
+        }
         return toResponse(clientRepository.save(client));
     }
 
