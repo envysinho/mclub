@@ -1,15 +1,54 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Package, TrendingUp, Users } from "lucide-react";
+import { Activity, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { getDashboard } from "@/lib/api";
+import {
+  assignMembership,
+  createClient,
+  getDashboard,
+  listClients,
+  listMembershipPlans,
+  listProducts,
+  sellProduct,
+} from "@/lib/api";
 import {
   formatCurrency,
   formatDate,
+  fullName,
   MOVEMENT_TYPE_LABELS,
 } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+
+const EMPTY_SALE_CLIENT = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  documentId: "",
+  active: true,
+};
+
+const EMPTY_SALE_FORM = {
+  type: "membership",
+  clientMode: "existing",
+  clientId: "",
+  planId: "",
+  productId: "",
+  quantity: "1",
+  client: EMPTY_SALE_CLIENT,
+};
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
@@ -31,8 +70,15 @@ function StatCard({ icon: Icon, label, value, hint }) {
 function Dashboard() {
   const { logout } = useAuth();
   const [data, setData] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showSaleSheet, setShowSaleSheet] = useState(false);
+  const [saleForm, setSaleForm] = useState(EMPTY_SALE_FORM);
+  const [saleError, setSaleError] = useState(null);
+  const [isSaleSubmitting, setIsSaleSubmitting] = useState(false);
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -42,8 +88,16 @@ function Dashboard() {
     setError(null);
     setIsLoading(true);
     try {
-      const response = await getDashboard(handleUnauthorized);
+      const [response, clientsData, plansData, productsData] = await Promise.all([
+        getDashboard(handleUnauthorized),
+        listClients(handleUnauthorized),
+        listMembershipPlans(handleUnauthorized),
+        listProducts(handleUnauthorized),
+      ]);
       setData(response);
+      setClients(clientsData);
+      setPlans(plansData);
+      setProducts(productsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar el dashboard");
     } finally {
@@ -55,12 +109,343 @@ function Dashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
+  const resetSaleForm = () => {
+    setSaleForm({
+      ...EMPTY_SALE_FORM,
+      client: { ...EMPTY_SALE_CLIENT },
+    });
+    setSaleError(null);
+    setShowSaleSheet(false);
+  };
+
+  const saleTypeButtonClass = (value) =>
+    cn(
+      "inline-flex h-9 flex-1 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors",
+      saleForm.type === value
+        ? "bg-background text-foreground shadow-xs"
+        : "text-muted-foreground hover:text-foreground"
+    );
+
+  const clientModeButtonClass = (value) =>
+    cn(
+      "inline-flex h-9 flex-1 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors",
+      saleForm.clientMode === value
+        ? "bg-background text-foreground shadow-xs"
+        : "text-muted-foreground hover:text-foreground"
+    );
+
+  const selectedPlan = plans.find((plan) => plan.id === Number(saleForm.planId));
+  const selectedProduct = products.find((product) => product.id === Number(saleForm.productId));
+  const saleAmount =
+    saleForm.type === "membership"
+      ? selectedPlan?.price
+      : selectedProduct
+        ? selectedProduct.price * Number(saleForm.quantity || 0)
+        : null;
+
+  const handleSaleSubmit = async (event) => {
+    event.preventDefault();
+    setSaleError(null);
+    setIsSaleSubmitting(true);
+
+    try {
+      let clientId = saleForm.clientId ? Number(saleForm.clientId) : null;
+
+      if (saleForm.clientMode === "new") {
+        const createdClient = await createClient(
+          {
+            firstName: saleForm.client.firstName.trim(),
+            lastName: saleForm.client.lastName.trim(),
+            email: saleForm.client.email.trim() || null,
+            phone: saleForm.client.phone.trim() || null,
+            documentId: "",
+            active: true,
+          },
+          handleUnauthorized
+        );
+        clientId = createdClient.id;
+      }
+
+      if (saleForm.type === "membership") {
+        if (!clientId) {
+          throw new Error("Selecciona o crea un cliente para vender una membresía");
+        }
+        await assignMembership(
+          {
+            clientId,
+            planId: Number(saleForm.planId),
+          },
+          handleUnauthorized
+        );
+      } else {
+        await sellProduct(
+          {
+            productId: Number(saleForm.productId),
+            quantity: Number(saleForm.quantity),
+            clientId,
+          },
+          handleUnauthorized
+        );
+      }
+
+      resetSaleForm();
+      await loadDashboard();
+    } catch (err) {
+      setSaleError(err instanceof Error ? err.message : "Error al registrar venta");
+    } finally {
+      setIsSaleSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <PageCard
         title="Dashboard"
         description="Resumen del gimnasio y movimientos recientes."
+        action={
+          <Button onClick={() => setShowSaleSheet(true)}>
+            <ShoppingCart />
+            Nueva venta
+          </Button>
+        }
       >
+        <Sheet
+          open={showSaleSheet}
+          onOpenChange={(open) => {
+            if (!open) {
+              resetSaleForm();
+            } else {
+              setShowSaleSheet(true);
+            }
+          }}
+        >
+          <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+            <SheetHeader className="border-b pr-12">
+              <SheetTitle>Nueva venta</SheetTitle>
+              <SheetDescription>
+                Registra una venta de membresía o producto desde el dashboard.
+              </SheetDescription>
+            </SheetHeader>
+
+            <form onSubmit={handleSaleSubmit} className="grid gap-4 px-4 pb-4">
+              <div
+                className="grid grid-cols-2 rounded-lg border bg-muted/50 p-1"
+                role="group"
+                aria-label="Tipo de venta"
+              >
+                <button
+                  type="button"
+                  className={saleTypeButtonClass("membership")}
+                  onClick={() =>
+                    setSaleForm({ ...saleForm, type: "membership", productId: "" })
+                  }
+                >
+                  Membresía
+                </button>
+                <button
+                  type="button"
+                  className={saleTypeButtonClass("product")}
+                  onClick={() => setSaleForm({ ...saleForm, type: "product", planId: "" })}
+                >
+                  Producto
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="saleClientMode">Cliente</Label>
+                <div
+                  id="saleClientMode"
+                  className="grid grid-cols-2 rounded-lg border bg-muted/50 p-1"
+                  role="group"
+                  aria-label="Tipo de cliente"
+                >
+                  <button
+                    type="button"
+                    className={clientModeButtonClass("existing")}
+                    onClick={() =>
+                      setSaleForm({
+                        ...saleForm,
+                        clientMode: "existing",
+                        client: { ...EMPTY_SALE_CLIENT },
+                      })
+                    }
+                  >
+                    Existente
+                  </button>
+                  <button
+                    type="button"
+                    className={clientModeButtonClass("new")}
+                    onClick={() => setSaleForm({ ...saleForm, clientMode: "new", clientId: "" })}
+                  >
+                    Nuevo
+                  </button>
+                </div>
+              </div>
+
+              {saleForm.clientMode === "existing" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="saleClient">
+                    {saleForm.type === "product" ? "Cliente (opcional)" : "Cliente"}
+                  </Label>
+                  <select
+                    id="saleClient"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                    value={saleForm.clientId}
+                    onChange={(event) =>
+                      setSaleForm({ ...saleForm, clientId: event.target.value })
+                    }
+                    required={saleForm.type === "membership"}
+                  >
+                    <option value="">
+                      {saleForm.type === "product" ? "Venta general" : "Seleccionar cliente"}
+                    </option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {fullName(client)}
+                        {client.active === false ? " · Inactivo" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="grid gap-4 rounded-lg border bg-background/50 p-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="saleFirstName">Nombres</Label>
+                      <Input
+                        id="saleFirstName"
+                        value={saleForm.client.firstName}
+                        onChange={(event) =>
+                          setSaleForm({
+                            ...saleForm,
+                            client: { ...saleForm.client, firstName: event.target.value },
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="saleLastName">Apellidos</Label>
+                      <Input
+                        id="saleLastName"
+                        value={saleForm.client.lastName}
+                        onChange={(event) =>
+                          setSaleForm({
+                            ...saleForm,
+                            client: { ...saleForm.client, lastName: event.target.value },
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="salePhone">Teléfono</Label>
+                    <Input
+                      id="salePhone"
+                      value={saleForm.client.phone}
+                      onChange={(event) =>
+                        setSaleForm({
+                          ...saleForm,
+                          client: { ...saleForm.client, phone: event.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="saleEmail">Correo</Label>
+                    <Input
+                      id="saleEmail"
+                      type="email"
+                      value={saleForm.client.email}
+                      onChange={(event) =>
+                        setSaleForm({
+                          ...saleForm,
+                          client: { ...saleForm.client, email: event.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {saleForm.type === "membership" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="salePlan">Plan de membresía</Label>
+                  <select
+                    id="salePlan"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                    value={saleForm.planId}
+                    onChange={(event) =>
+                      setSaleForm({ ...saleForm, planId: event.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Seleccionar plan</option>
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                  <div className="space-y-2">
+                    <Label htmlFor="saleProduct">Producto</Label>
+                    <select
+                      id="saleProduct"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                      value={saleForm.productId}
+                      onChange={(event) =>
+                        setSaleForm({ ...saleForm, productId: event.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Seleccionar producto</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} · Stock {product.stock} · {formatCurrency(product.price)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="saleQuantity">Cantidad</Label>
+                    <Input
+                      id="saleQuantity"
+                      type="number"
+                      min="1"
+                      value={saleForm.quantity}
+                      onChange={(event) =>
+                        setSaleForm({ ...saleForm, quantity: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-lg border bg-background/50 px-3 py-2">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <strong>{formatCurrency(saleAmount ?? 0)}</strong>
+              </div>
+
+              {saleError && <p className="text-sm text-destructive">{saleError}</p>}
+
+              <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={resetSaleForm}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isSaleSubmitting}>
+                  <ShoppingCart />
+                  {isSaleSubmitting ? "Registrando..." : "Registrar venta"}
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
             {error}

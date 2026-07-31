@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -305,6 +312,15 @@ function Clients({ module = "clients" }) {
       <p className="text-sm text-muted-foreground">Sin membresía asignada</p>
     );
 
+  const renderClientMembershipInline = (client) =>
+    client.activeMembership ? (
+      <span className="text-sm text-muted-foreground">
+        {client.activeMembership.planName} · vence {formatDate(client.activeMembership.endDate)}
+      </span>
+    ) : (
+      <span className="text-sm text-muted-foreground">Sin membresía</span>
+    );
+
   const renderClientStatusSwitch = (client) => {
     const isActive = client.active !== false;
     const isUpdating = updatingClientStatusId === client.id;
@@ -419,16 +435,31 @@ function Clients({ module = "clients" }) {
               </Button>
             </div>
 
-            {showClientForm && (
+            <Sheet
+              open={showClientForm}
+              onOpenChange={(open) => {
+                if (!open) {
+                  resetClientForm();
+                } else {
+                  setShowClientForm(true);
+                }
+              }}
+            >
+              <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+                <SheetHeader className="border-b pr-12">
+                  <SheetTitle>
+                    {editingClient ? "Editar cliente" : "Nuevo cliente"}
+                  </SheetTitle>
+                  <SheetDescription>
+                    {editingClient
+                      ? "Actualiza los datos y el estado del cliente."
+                      : "Registra un cliente nuevo en el gimnasio."}
+                  </SheetDescription>
+                </SheetHeader>
               <form
                 onSubmit={handleClientSubmit}
-                className="grid gap-4 rounded-xl border p-4 md:grid-cols-2"
+                className="grid gap-4 px-4 pb-4"
               >
-                <div className="md:col-span-2">
-                  <h3 className="font-medium">
-                    {editingClient ? "Editar cliente" : "Nuevo cliente"}
-                  </h3>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombres</Label>
                   <Input
@@ -455,7 +486,7 @@ function Clients({ module = "clients" }) {
                     onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2">
                   <Label htmlFor="email">Correo</Label>
                   <Input
                     id="email"
@@ -464,11 +495,41 @@ function Clients({ module = "clients" }) {
                     onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                   />
                 </div>
-                {formError && <p className="md:col-span-2 text-sm text-destructive">{formError}</p>}
-                <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
-                  <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-                    {isSubmitting ? "Guardando..." : "Guardar"}
-                  </Button>
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/50 px-3 py-2">
+                  <div className="min-w-0">
+                    <Label htmlFor="clientActive">Estado</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {clientForm.active !== false ? "Activo" : "Inactivo"}
+                    </p>
+                  </div>
+                  <button
+                    id="clientActive"
+                    type="button"
+                    role="switch"
+                    aria-checked={clientForm.active !== false}
+                    className={cn(
+                      "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors",
+                      clientForm.active !== false
+                        ? "border-emerald-500/30 bg-emerald-500/20"
+                        : "border-border bg-muted/50"
+                    )}
+                    onClick={() =>
+                      setClientForm({
+                        ...clientForm,
+                        active: !(clientForm.active !== false),
+                      })
+                    }
+                  >
+                    <span
+                      className={cn(
+                        "size-5 rounded-full bg-foreground shadow-sm transition-transform",
+                        clientForm.active !== false ? "translate-x-5" : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                </div>
+                {formError && <p className="text-sm text-destructive">{formError}</p>}
+                <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -477,9 +538,13 @@ function Clients({ module = "clients" }) {
                   >
                     Cancelar
                   </Button>
+                  <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+                    {isSubmitting ? "Guardando..." : "Guardar"}
+                  </Button>
                 </div>
               </form>
-            )}
+              </SheetContent>
+            </Sheet>
 
             {isLoading ? (
               <div className="space-y-3">
@@ -532,20 +597,11 @@ function Clients({ module = "clients" }) {
                 {clients.map((client) => (
                   <div
                     key={client.id}
-                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
+                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4"
                   >
-                    <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(120px,auto)_minmax(0,1fr)] md:items-center md:gap-6">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold">{fullName(client)}</h3>
-                      </div>
-                      <div className="min-w-0 text-sm text-muted-foreground md:flex md:flex-wrap md:items-center md:gap-x-2">
-                        <span className="break-words">{client.phone || "Sin teléfono"}</span>
-                        <span className="hidden md:inline">·</span>
-                        <span className="block break-all md:inline">{client.email || "Sin correo"}</span>
-                      </div>
-                    </div>
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      <h3 className="font-semibold">{fullName(client)}</h3>
+                      {renderClientMembershipInline(client)}
                     </div>
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                       {renderClientStatusSwitch(client)}
