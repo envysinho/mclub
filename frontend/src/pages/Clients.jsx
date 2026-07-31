@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List, Plus, UserPlus } from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,39 @@ const EMPTY_PLAN = {
   description: "",
 };
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function getMembershipDaysRemaining(client) {
+  if (!client.activeMembership?.endDate) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const endTime = new Date(client.activeMembership.endDate).getTime();
+  if (Number.isNaN(endTime)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.ceil((endTime - Date.now()) / DAY_IN_MS);
+}
+
+function membershipUrgencyClass(client) {
+  const daysRemaining = getMembershipDaysRemaining(client);
+
+  if (!Number.isFinite(daysRemaining)) {
+    return "text-muted-foreground";
+  }
+
+  if (daysRemaining <= 3) {
+    return "text-red-500";
+  }
+
+  if (daysRemaining <= 7) {
+    return "text-yellow-500";
+  }
+
+  return "text-emerald-500";
+}
+
 function Clients({ module = "clients" }) {
   const { logout } = useAuth();
   const [clients, setClients] = useState([]);
@@ -59,7 +92,7 @@ function Clients({ module = "clients" }) {
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [clientForm, setClientForm] = useState(EMPTY_CLIENT);
-  const [clientView, setClientView] = useState("grid");
+  const [clientView, setClientView] = useState("list");
   const [updatingClientStatusId, setUpdatingClientStatusId] = useState(null);
 
   const [showPlanForm, setShowPlanForm] = useState(false);
@@ -91,6 +124,21 @@ function Clients({ module = "clients" }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((firstClient, secondClient) => {
+        const firstDays = getMembershipDaysRemaining(firstClient);
+        const secondDays = getMembershipDaysRemaining(secondClient);
+
+        if (firstDays !== secondDays) {
+          return firstDays - secondDays;
+        }
+
+        return fullName(firstClient).localeCompare(fullName(secondClient), "es");
+      }),
+    [clients]
+  );
 
   const resetClientForm = () => {
     setClientForm(EMPTY_CLIENT);
@@ -263,7 +311,7 @@ function Clients({ module = "clients" }) {
 
   const renderClientMembershipSummary = (client) =>
     client.activeMembership ? (
-      <p className="text-sm break-words">
+      <p className={cn("text-sm break-words", membershipUrgencyClass(client))}>
         Membresía: <strong>{client.activeMembership.planName}</strong> · vence{" "}
         {formatDate(client.activeMembership.endDate)}
       </p>
@@ -273,7 +321,7 @@ function Clients({ module = "clients" }) {
 
   const renderClientMembershipInline = (client) =>
     client.activeMembership ? (
-      <span className="text-sm text-muted-foreground">
+      <span className={cn("text-sm", membershipUrgencyClass(client))}>
         {client.activeMembership.planName} · vence {formatDate(client.activeMembership.endDate)}
       </span>
     ) : (
@@ -484,9 +532,9 @@ function Clients({ module = "clients" }) {
                   <Skeleton key={index} className="h-24 w-full rounded-xl" />
                 ))}
               </div>
-            ) : clients.length && clientView === "grid" ? (
+            ) : sortedClients.length && clientView === "grid" ? (
               <div className="grid gap-3 lg:grid-cols-2">
-                {clients.map((client) => (
+                {sortedClients.map((client) => (
                   <div key={client.id} className="rounded-xl border p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
@@ -524,9 +572,9 @@ function Clients({ module = "clients" }) {
                   </div>
                 ))}
               </div>
-            ) : clients.length ? (
+            ) : sortedClients.length ? (
               <div className="overflow-hidden rounded-xl border">
-                {clients.map((client) => (
+                {sortedClients.map((client) => (
                   <div
                     key={client.id}
                     className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4"

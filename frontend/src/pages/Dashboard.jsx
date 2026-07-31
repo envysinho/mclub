@@ -261,6 +261,13 @@ function Dashboard() {
                 >
                   <button
                     type="button"
+                    className={clientModeButtonClass("new")}
+                    onClick={() => setSaleForm({ ...saleForm, clientMode: "new", clientId: "" })}
+                  >
+                    Nuevo
+                  </button>
+                  <button
+                    type="button"
                     className={clientModeButtonClass("existing")}
                     onClick={() =>
                       setSaleForm({
@@ -271,13 +278,6 @@ function Dashboard() {
                     }
                   >
                     Existente
-                  </button>
-                  <button
-                    type="button"
-                    className={clientModeButtonClass("new")}
-                    onClick={() => setSaleForm({ ...saleForm, clientMode: "new", clientId: "" })}
-                  >
-                    Nuevo
                   </button>
                 </div>
               </div>

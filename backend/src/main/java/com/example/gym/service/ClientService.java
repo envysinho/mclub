@@ -15,20 +15,24 @@ import com.example.gym.entity.ClientMembership;
 import com.example.gym.model.MembershipStatus;
 import com.example.gym.repository.ClientMembershipRepository;
 import com.example.gym.repository.ClientRepository;
+import com.example.gym.repository.MovementRepository;
 
 @Service
 public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMembershipRepository clientMembershipRepository;
+    private final MovementRepository movementRepository;
     private final MembershipStatusService membershipStatusService;
 
     public ClientService(
             ClientRepository clientRepository,
             ClientMembershipRepository clientMembershipRepository,
+            MovementRepository movementRepository,
             MembershipStatusService membershipStatusService) {
         this.clientRepository = clientRepository;
         this.clientMembershipRepository = clientMembershipRepository;
+        this.movementRepository = movementRepository;
         this.membershipStatusService = membershipStatusService;
     }
 
@@ -69,6 +73,7 @@ public class ClientService {
     @Transactional
     public void delete(Long id) {
         Client client = getClientOrThrow(id);
+        movementRepository.clearClientReferences(client.getId());
         clientRepository.delete(client);
     }
 

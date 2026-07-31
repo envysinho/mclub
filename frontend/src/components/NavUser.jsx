@@ -35,8 +35,8 @@ function NavUser({ user, onLogout }) {
             className="min-w-0 flex-1"
             render={<div />}
           >
-            <Avatar className="size-8 rounded-lg">
-              <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+            <Avatar className="size-8 overflow-hidden rounded-full">
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.username}</span>

@@ -41,7 +41,7 @@ function Login() {
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-center">Gym Manager</CardTitle>
+          <CardTitle className="text-xl font-semibold text-center">MClub Gym</CardTitle>
           <CardDescription className="text-center text-sm text-muted-foreground">
             Acceso al panel de administración del gimnasio.
           </CardDescription>

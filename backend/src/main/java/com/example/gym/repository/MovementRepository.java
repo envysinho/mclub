@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,4 +15,8 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
 
     @Query("SELECT COALESCE(SUM(m.amount), 0) FROM Movement m WHERE m.createdAt >= :start AND m.createdAt < :end")
     java.math.BigDecimal sumAmountBetween(@Param("start") Instant start, @Param("end") Instant end);
+
+    @Modifying
+    @Query("UPDATE Movement m SET m.client = null WHERE m.client.id = :clientId")
+    void clearClientReferences(@Param("clientId") Long clientId);
 }

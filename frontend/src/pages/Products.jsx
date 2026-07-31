@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import { PackagePlus, ShoppingCart } from "lucide-react";
+import { LayoutGrid, List, PackagePlus } from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   createProduct,
   deleteProduct,
-  listClients,
   listProducts,
-  sellProduct,
   updateProduct,
 } from "@/lib/api";
-import { formatCurrency, fullName } from "@/lib/constants";
+import { formatCurrency } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const EMPTY_PRODUCT = {
   name: "",
@@ -24,10 +30,11 @@ const EMPTY_PRODUCT = {
   description: "",
 };
 
+const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
+
 function Products() {
   const { logout } = useAuth();
   const [products, setProducts] = useState([]);
-  const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -36,10 +43,7 @@ function Products() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
-
-  const [saleProductId, setSaleProductId] = useState("");
-  const [saleQuantity, setSaleQuantity] = useState("1");
-  const [saleClientId, setSaleClientId] = useState("");
+  const [productView, setProductView] = useState("grid");
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -49,12 +53,8 @@ function Products() {
     setError(null);
     setIsLoading(true);
     try {
-      const [productsData, clientsData] = await Promise.all([
-        listProducts(handleUnauthorized),
-        listClients(handleUnauthorized),
-      ]);
+      const productsData = await listProducts(handleUnauthorized);
       setProducts(productsData);
-      setClients(clientsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar productos");
     } finally {
@@ -122,101 +122,32 @@ function Products() {
     }
   };
 
-  const handleSell = async (event) => {
-    event.preventDefault();
-    setFormError(null);
-    setIsSubmitting(true);
+  const productViewButtonClass = (value) =>
+    cn(
+      "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+      productView === value
+        ? "bg-background text-foreground shadow-xs"
+        : "text-muted-foreground hover:text-foreground"
+    );
 
-    try {
-      await sellProduct(
-        {
-          productId: Number(saleProductId),
-          quantity: Number(saleQuantity),
-          clientId: saleClientId ? Number(saleClientId) : null,
-        },
-        handleUnauthorized
-      );
-      setSaleProductId("");
-      setSaleQuantity("1");
-      setSaleClientId("");
-      await loadData();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al registrar venta");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const renderProductStatus = (product) => (
+    <Badge
+      className={cn(
+        "w-fit shrink-0",
+        product.stock > 0
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+          : "border-destructive/30 bg-destructive/10 text-destructive"
+      )}
+    >
+      {product.stock > 0 ? "Disponible" : "Agotado"}
+    </Badge>
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      <PageCard title="Registrar venta">
-        <form onSubmit={handleSell} className="mx-auto grid max-w-xl gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="saleProduct">Producto</Label>
-            <select
-              id="saleProduct"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-              value={saleProductId}
-              onChange={(e) => setSaleProductId(e.target.value)}
-              required
-            >
-              <option value="">Seleccionar producto</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} · Stock {product.stock}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="saleQuantity">Cantidad</Label>
-            <Input
-              id="saleQuantity"
-              type="number"
-              min="1"
-              value={saleQuantity}
-              onChange={(e) => setSaleQuantity(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="saleClient">Cliente (opcional)</Label>
-            <select
-              id="saleClient"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-              value={saleClientId}
-              onChange={(e) => setSaleClientId(e.target.value)}
-            >
-              <option value="">Venta general</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {fullName(client)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {formError && <p className="text-sm text-destructive">{formError}</p>}
-          <Button type="submit" disabled={isSubmitting || !products.length}>
-            <ShoppingCart />
-            {isSubmitting ? "Registrando..." : "Registrar venta"}
-          </Button>
-        </form>
-      </PageCard>
-
       <PageCard
         title="Productos"
-        description="Catálogo de productos del gimnasio y registro de ventas."
-        action={
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-          >
-            <PackagePlus />
-            Nuevo producto
-          </Button>
-        }
+        description="Administra el catálogo de productos del gimnasio."
       >
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
@@ -224,106 +155,222 @@ function Products() {
           </p>
         )}
 
-        {showForm && (
-          <form
-            onSubmit={handleSubmit}
-            className="mb-6 grid gap-4 rounded-xl border p-4 md:grid-cols-2"
-          >
-            <div className="md:col-span-2">
-              <h3 className="font-medium">
-                {editingProduct ? "Editar producto" : "Nuevo producto"}
-              </h3>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              className="grid w-full grid-cols-2 rounded-lg border bg-muted/50 p-1 sm:w-auto"
+              role="group"
+              aria-label="Vista de productos"
+            >
+              <button
+                type="button"
+                className={productViewButtonClass("grid")}
+                aria-pressed={productView === "grid"}
+                onClick={() => setProductView("grid")}
+              >
+                <LayoutGrid />
+                Grid
+              </button>
+              <button
+                type="button"
+                className={productViewButtonClass("list")}
+                aria-pressed={productView === "list"}
+                onClick={() => setProductView("list")}
+              >
+                <List />
+                Lista
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="productName">Nombre</Label>
-              <Input
-                id="productName"
-                value={productForm.name}
-                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="productPrice">Precio (S/)</Label>
-              <Input
-                id="productPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                value={productForm.price}
-                onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="productStock">Stock</Label>
-              <Input
-                id="productStock"
-                type="number"
-                min="0"
-                value={productForm.stock}
-                onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="productDescription">Descripción</Label>
-              <Input
-                id="productDescription"
-                value={productForm.description}
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-              />
-            </div>
-            {formError && <p className="md:col-span-2 text-sm text-destructive">{formError}</p>}
-            <div className="flex gap-2 md:col-span-2">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Guardando..." : "Guardar"}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        )}
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+            >
+              <PackagePlus />
+              Nuevo producto
+            </Button>
+          </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : products.length ? (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {products.map((product) => (
-              <div key={product.id} className="rounded-xl border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {formatCurrency(product.price)} · Stock: {product.stock}
-                    </p>
-                    {product.description && (
-                      <p className="mt-2 text-sm text-muted-foreground">{product.description}</p>
-                    )}
+          <Sheet
+            open={showForm}
+            onOpenChange={(open) => {
+              if (!open) {
+                resetForm();
+              } else {
+                setShowForm(true);
+              }
+            }}
+          >
+            <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+              <SheetHeader className="border-b pr-12">
+                <SheetTitle>
+                  {editingProduct ? "Editar producto" : "Nuevo producto"}
+                </SheetTitle>
+                <SheetDescription>
+                  {editingProduct
+                    ? "Actualiza precio, stock y descripción del producto."
+                    : "Agrega un producto para venderlo desde el dashboard."}
+                </SheetDescription>
+              </SheetHeader>
+              <form onSubmit={handleSubmit} className="grid gap-4 px-4 pb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="productName">Nombre</Label>
+                  <Input
+                    id="productName"
+                    value={productForm.name}
+                    onChange={(event) =>
+                      setProductForm({ ...productForm, name: event.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productPrice">Precio (S/)</Label>
+                  <Input
+                    id="productPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={productForm.price}
+                    onChange={(event) =>
+                      setProductForm({ ...productForm, price: event.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productStock">Stock</Label>
+                  <Input
+                    id="productStock"
+                    type="number"
+                    min="0"
+                    value={productForm.stock}
+                    onChange={(event) =>
+                      setProductForm({ ...productForm, stock: event.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productDescription">Descripción</Label>
+                  <Input
+                    id="productDescription"
+                    value={productForm.description}
+                    onChange={(event) =>
+                      setProductForm({ ...productForm, description: event.target.value })
+                    }
+                  />
+                </div>
+                {formError && <p className="text-sm text-destructive">{formError}</p>}
+                <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={resetForm}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+                    {isSubmitting ? "Guardando..." : "Guardar"}
+                  </Button>
+                </div>
+              </form>
+            </SheetContent>
+          </Sheet>
+
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : products.length && productView === "grid" ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {products.map((product) => (
+                <div key={product.id} className="rounded-xl border p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formatCurrency(product.price)} · Stock: {product.stock}
+                      </p>
+                    </div>
+                    {renderProductStatus(product)}
                   </div>
-                  <Badge variant={product.stock > 0 ? "secondary" : "destructive"}>
-                    {product.stock > 0 ? "Disponible" : "Agotado"}
-                  </Badge>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm text-muted-foreground break-words">
+                        {product.description || "Sin descripción"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 sm:flex-none"
+                        onClick={() => openEdit(product)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                        onClick={() => handleDelete(product)}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => openEdit(product)}>
-                    Editar
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(product)}>
-                    Eliminar
-                  </Button>
+              ))}
+            </div>
+          ) : products.length ? (
+            <div className="overflow-x-auto rounded-xl border">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="grid min-w-[920px] items-center gap-4 border-b px-4 py-3 last:border-b-0"
+                  style={{ gridTemplateColumns: PRODUCT_LIST_COLUMNS }}
+                >
+                  <h3 className="min-w-0 font-semibold truncate">{product.name}</h3>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {formatCurrency(product.price)}
+                  </span>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    Stock: {product.stock}
+                  </span>
+                  <span className="min-w-0 text-sm text-muted-foreground truncate">
+                    {product.description || "Sin descripción"}
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => openEdit(product)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(product)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
-        )}
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
+          )}
+        </div>
       </PageCard>
     </div>
   );

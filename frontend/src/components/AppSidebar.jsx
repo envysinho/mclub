@@ -53,7 +53,7 @@ function AppSidebar({ currentPage, onNavigate }) {
               <span className="truncate text-[10.3px] text-sidebar-foreground/70 tracking-normal">
                 Gestión integral
               </span>
-              <strong className="truncate text-sm font-semibold">Gym Manager</strong>
+              <strong className="truncate text-sm font-semibold">MClub Gym</strong>
             </div>
           </div>
         </div>
