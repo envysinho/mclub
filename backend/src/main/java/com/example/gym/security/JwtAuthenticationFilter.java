@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -40,19 +41,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if (jwtService.isTokenValid(token)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String username = jwtService.extractUsername(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        if (!jwtService.isTokenValid(token)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sesión expirada");
+            return;
+        }
 
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                String subject = jwtService.extractUsername(token);
+                UserDetails userDetails = loadUserDetails(subject);
+
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (UsernameNotFoundException ex) {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sesión expirada");
+                return;
+            }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private UserDetails loadUserDetails(String subject) {
+        try {
+            return userDetailsService.loadUserById(Long.parseLong(subject));
+        } catch (NumberFormatException ex) {
+            return userDetailsService.loadUserByUsername(subject);
+        }
     }
 }

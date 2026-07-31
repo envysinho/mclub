@@ -8,6 +8,8 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.example.gym.entity.User;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -26,11 +28,23 @@ public class JwtService {
     }
 
     public String generateToken(String username) {
+        return generateTokenSubject(username);
+    }
+
+    public String generateToken(User user) {
+        return generateTokenSubject(user.getId().toString());
+    }
+
+    public String generateTokenForUserId(Long userId) {
+        return generateTokenSubject(userId.toString());
+    }
+
+    private String generateTokenSubject(String subject) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .subject(username)
+                .subject(subject)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)

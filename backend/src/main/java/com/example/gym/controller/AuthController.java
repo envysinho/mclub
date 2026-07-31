@@ -30,7 +30,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         User user = userService.authenticate(request.username(), request.password());
-        String token = jwtService.generateToken(user.getUsername());
+        String token = jwtService.generateToken(user);
         return ResponseEntity.ok(new LoginResponse(UserResponse.from(user), token));
     }
 }

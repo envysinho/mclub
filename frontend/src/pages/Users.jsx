@@ -16,13 +16,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { createUser, deleteUser, listUsers, updateUser } from "@/lib/api";
+import { getRoleLabel } from "@/lib/roles";
 import { cn } from "@/lib/utils";
-
-const ROLE_LABELS = {
-  SUDO: "Sudo",
-  ADMIN: "Admin",
-  USER: "User",
-};
 
 const EMPTY_USER = {
   username: "",
@@ -32,8 +27,12 @@ const EMPTY_USER = {
   enabled: true,
 };
 
+function displayUserName(user) {
+  return user?.name?.trim() || user?.username || "Usuario";
+}
+
 function Users() {
-  const { logout } = useAuth();
+  const { logout, user: currentUser, updateCurrentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,7 +83,7 @@ function Users() {
   const openEditForm = (user) => {
     setUserForm({
       username: user.username,
-      name: user.name ?? "",
+      name: user.name?.trim() || user.username || "",
       password: "",
       role: user.role,
       enabled: user.enabled,
@@ -101,7 +100,7 @@ function Users() {
 
     try {
       if (editingUser) {
-        await updateUser(
+        const result = await updateUser(
           editingUser.id,
           {
             username: userForm.username,
@@ -112,6 +111,10 @@ function Users() {
           },
           handleUnauthorized
         );
+        const updatedUser = result.user ?? result;
+        if (currentUser?.id === updatedUser.id) {
+          updateCurrentUser(updatedUser, result.token);
+        }
       } else {
         await createUser(userForm, handleUnauthorized);
       }
@@ -127,7 +130,7 @@ function Users() {
   const handleQuickUpdate = async (user, patch) => {
     const payload = {
       username: user.username,
-      name: user.name,
+      name: user.name?.trim() || user.username,
       role: patch.role ?? user.role,
       enabled: patch.enabled ?? user.enabled,
       password: "",
@@ -142,7 +145,11 @@ function Users() {
     );
 
     try {
-      await updateUser(user.id, payload, handleUnauthorized);
+      const result = await updateUser(user.id, payload, handleUnauthorized);
+      const updatedUser = result.user ?? result;
+      if (currentUser?.id === updatedUser.id) {
+        updateCurrentUser(updatedUser, result.token);
+      }
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al actualizar usuario");
@@ -173,7 +180,7 @@ function Users() {
       type="button"
       role="switch"
       aria-checked={user.enabled}
-      aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${user.name ?? user.username}`}
+      aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${displayUserName(user)}`}
       disabled={updatingUserId === user.id}
       className={cn(
         "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors disabled:opacity-50",
@@ -221,7 +228,9 @@ function Users() {
           >
             <SheetContent className="w-full overflow-y-auto sm:max-w-md">
               <SheetHeader className="border-b pr-12">
-                <SheetTitle>{editingUser ? "Editar usuario" : "Nuevo usuario"}</SheetTitle>
+                <SheetTitle>
+                  {editingUser ? `Editar ${displayUserName(editingUser)}` : "Nuevo usuario"}
+                </SheetTitle>
                 <SheetDescription>
                   {editingUser
                     ? "Actualiza sus datos, rol o estado de acceso."
@@ -274,9 +283,9 @@ function Users() {
                     value={userForm.role}
                     onChange={(event) => setUserForm({ ...userForm, role: event.target.value })}
                   >
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUDO">Sudo</option>
+                    <option value="USER">user</option>
+                    <option value="ADMIN">admin</option>
+                    <option value="SUDO">sudo</option>
                   </select>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-3">
@@ -334,11 +343,11 @@ function Users() {
                   className="grid gap-3 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(14rem,1fr)_8rem_7rem_auto] md:items-center md:gap-4"
                 >
                   <div className="min-w-0">
-                    <h3 className="truncate font-semibold">{user.name ?? user.username}</h3>
+                    <h3 className="truncate font-semibold">{displayUserName(user)}</h3>
                     <p className="truncate text-sm text-muted-foreground">{user.username}</p>
                   </div>
                   <Badge variant="outline" className="w-fit">
-                    {ROLE_LABELS[user.role] ?? user.role}
+                    {getRoleLabel(user.role)}
                   </Badge>
                   <div className="flex items-center gap-2">
                     {renderEnabledSwitch(user)}
@@ -383,7 +392,7 @@ function Users() {
         open={Boolean(deleteTarget)}
         title="Eliminar usuario"
         description={`Confirma tu contraseña para eliminar a ${
-          deleteTarget?.name ?? deleteTarget?.username ?? "este usuario"
+          deleteTarget ? displayUserName(deleteTarget) : "este usuario"
         }.`}
         error={deleteError}
         isSubmitting={isDeleting}

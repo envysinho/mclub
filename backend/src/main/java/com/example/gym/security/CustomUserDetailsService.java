@@ -22,4 +22,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .map(UserPrincipal::new)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
+
+    public UserDetails loadUserById(Long id) throws UsernameNotFoundException {
+        return userRepository.findById(id)
+                .map(UserPrincipal::new)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    }
 }

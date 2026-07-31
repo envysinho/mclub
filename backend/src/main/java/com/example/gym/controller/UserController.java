@@ -17,9 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gym.dto.CreateUserRequest;
 import com.example.gym.dto.UpdateUserRequest;
+import com.example.gym.dto.UpdateUserResponse;
 import com.example.gym.dto.UserResponse;
 import com.example.gym.service.DeleteConfirmationService;
 import com.example.gym.service.UserService;
+import com.example.gym.security.JwtService;
+import com.example.gym.security.UserPrincipal;
 
 import jakarta.validation.Valid;
 
@@ -29,10 +32,15 @@ public class UserController {
 
     private final UserService userService;
     private final DeleteConfirmationService deleteConfirmationService;
+    private final JwtService jwtService;
 
-    public UserController(UserService userService, DeleteConfirmationService deleteConfirmationService) {
+    public UserController(
+            UserService userService,
+            DeleteConfirmationService deleteConfirmationService,
+            JwtService jwtService) {
         this.userService = userService;
         this.deleteConfirmationService = deleteConfirmationService;
+        this.jwtService = jwtService;
     }
 
     @GetMapping
@@ -47,10 +55,15 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserResponse updateUser(
+    public UpdateUserResponse updateUser(
             @PathVariable("id") Long id,
-            @Valid @RequestBody UpdateUserRequest request) {
-        return userService.update(id, request);
+            @Valid @RequestBody UpdateUserRequest request,
+            Authentication authentication) {
+        UserResponse user = userService.update(id, request);
+        String token = isAuthenticatedUser(authentication, user.id())
+                ? jwtService.generateTokenForUserId(user.id())
+                : null;
+        return new UpdateUserResponse(user, token);
     }
 
     @DeleteMapping("/{id}")
@@ -61,5 +74,11 @@ public class UserController {
             Authentication authentication) {
         deleteConfirmationService.verify(authentication, confirmationPassword);
         userService.delete(id);
+    }
+
+    private boolean isAuthenticatedUser(Authentication authentication, Long userId) {
+        return authentication != null
+                && authentication.getPrincipal() instanceof UserPrincipal principal
+                && principal.getUser().getId().equals(userId);
     }
 }

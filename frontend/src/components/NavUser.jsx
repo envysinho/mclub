@@ -6,12 +6,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-const ROLE_LABELS = {
-  SUDO: "Sudo",
-  ADMIN: "Administrador",
-  USER: "Usuario",
-};
+import { getRoleLabel } from "@/lib/roles";
 
 function getInitials(name) {
   return name
@@ -28,8 +23,10 @@ function NavUser({ user, onLogout }) {
 
   if (!user) return null;
 
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
+  const roleLabel = getRoleLabel(user.role);
   const displayName = user.name || user.username;
+  const userHandle = user.username ? `@${user.username}` : "";
+  const userMeta = [userHandle, roleLabel].filter(Boolean).join(" · ");
   const initials = getInitials(displayName);
   const showTooltip = state === "collapsed" && !isMobile;
 
@@ -48,7 +45,7 @@ function NavUser({ user, onLogout }) {
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{displayName}</span>
-              <span className="truncate text-xs text-sidebar-foreground/70">{roleLabel}</span>
+              <span className="truncate text-xs text-sidebar-foreground/70">{userMeta}</span>
             </div>
           </SidebarMenuButton>
           <button

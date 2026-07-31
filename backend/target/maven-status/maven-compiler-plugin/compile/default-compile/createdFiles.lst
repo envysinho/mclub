@@ -33,6 +33,7 @@ com/example/gym/controller/DashboardController.class
 com/example/gym/controller/AuthController.class
 com/example/gym/security/UserPrincipal.class
 com/example/gym/service/MembershipStatusService.class
+com/example/gym/dto/UpdateUserResponse.class
 com/example/gym/repository/ProductRepository.class
 com/example/gym/dto/UpdateUserRequest.class
 com/example/gym/model/Role.class

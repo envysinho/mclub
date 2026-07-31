@@ -3,6 +3,7 @@ import {
   getStoredSession,
   login as loginRequest,
   logout as logoutRequest,
+  saveSession,
 } from "@/lib/auth";
 
 const AuthContext = createContext(null);
@@ -30,6 +31,17 @@ function AuthProvider({ children }) {
     setError(null);
   };
 
+  const updateCurrentUser = (nextUser, nextToken) => {
+    const currentSession = getStoredSession();
+    const nextSession = {
+      ...currentSession,
+      user: nextUser,
+      token: nextToken ?? currentSession?.token,
+    };
+    saveSession(nextSession);
+    setUser(nextUser);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -37,6 +49,7 @@ function AuthProvider({ children }) {
         isAuthenticated: Boolean(user),
         login,
         logout,
+        updateCurrentUser,
         error,
       }}
     >

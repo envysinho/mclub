@@ -42,7 +42,7 @@ const EMPTY_SALE_CLIENT = {
 
 const EMPTY_SALE_FORM = {
   type: "membership",
-  clientMode: "existing",
+  clientMode: "new",
   clientId: "",
   planId: "",
   productId: "",
