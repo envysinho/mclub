@@ -573,21 +573,21 @@ function Clients({ module = "clients" }) {
               >
                 <button
                   type="button"
-                  className={planViewButtonClass("list")}
-                  aria-pressed={planView === "list"}
-                  onClick={() => setPlanView("list")}
-                >
-                  <List />
-                  Lista
-                </button>
-                <button
-                  type="button"
                   className={planViewButtonClass("grid")}
                   aria-pressed={planView === "grid"}
                   onClick={() => setPlanView("grid")}
                 >
                   <LayoutGrid />
                   Grid
+                </button>
+                <button
+                  type="button"
+                  className={planViewButtonClass("list")}
+                  aria-pressed={planView === "list"}
+                  onClick={() => setPlanView("list")}
+                >
+                  <List />
+                  Lista
                 </button>
               </div>
               <Button
@@ -739,19 +739,18 @@ function Clients({ module = "clients" }) {
                 {plans.map((plan) => (
                   <div
                     key={plan.id}
-                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4"
+                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 lg:min-h-14 lg:grid-cols-[minmax(8rem,0.8fr)_7.5rem_5.5rem_minmax(0,1fr)_auto] lg:items-center lg:gap-4"
                   >
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                      <h3 className="font-semibold">{plan.name}</h3>
-                      <span className="text-sm text-muted-foreground">
-                        {formatCurrency(plan.price)} · {plan.durationDays} días
-                      </span>
-                      {plan.description && (
-                        <span className="text-sm text-muted-foreground">
-                          {plan.description}
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="min-w-0 font-semibold">{plan.name}</h3>
+                    <span className="text-sm text-muted-foreground">
+                      {formatCurrency(plan.price)}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {plan.durationDays} días
+                    </span>
+                    <span className="min-w-0 text-sm text-muted-foreground break-words">
+                      {plan.description || "Sin descripción"}
+                    </span>
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                       <Button
                         size="sm"
