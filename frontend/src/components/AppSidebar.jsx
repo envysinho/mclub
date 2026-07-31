@@ -1,4 +1,4 @@
-import { CreditCard, Dumbbell, LayoutDashboard, Package, Users } from "lucide-react";
+import { CreditCard, Dumbbell, LayoutDashboard, Package, ShieldCheck, Users } from "lucide-react";
 import NavUser from "@/components/NavUser";
 import {
   Sidebar,
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { id: "clients", icon: Users, label: "Clientes" },
   { id: "memberships", icon: CreditCard, label: "Membresías" },
   { id: "products", icon: Package, label: "Productos" },
+  { id: "users", icon: ShieldCheck, label: "Usuarios", roles: ["SUDO"] },
 ];
 
 function AppSidebar({ currentPage, onNavigate }) {
@@ -63,7 +64,7 @@ function AppSidebar({ currentPage, onNavigate }) {
         <SidebarGroup className="gap-2">
           <SidebarGroupContent>
             <SidebarMenu className="gap-y-0.5">
-              {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
+              {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user?.role)).map(({ id, icon: Icon, label }) => (
                 <SidebarMenuItem key={id}>
                   <SidebarMenuButton
                     isActive={currentPage === id}

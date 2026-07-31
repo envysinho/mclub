@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const ROLE_LABELS = {
+  SUDO: "Sudo",
   ADMIN: "Administrador",
   USER: "Usuario",
 };

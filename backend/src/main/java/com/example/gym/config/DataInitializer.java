@@ -30,7 +30,7 @@ public class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        userService.seedAdminIfMissing("admin", "admin123");
+        userService.seedDefaultUsers();
         seedPlansIfEmpty();
         seedProductsIfEmpty();
     }

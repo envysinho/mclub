@@ -81,7 +81,7 @@ function membershipUrgencyClass(client) {
 }
 
 function Clients({ module = "clients" }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [clients, setClients] = useState([]);
   const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -359,6 +359,8 @@ function Clients({ module = "clients" }) {
 
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
+  const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
+  const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
   const pageTitle = isMembershipsModule ? "Membresías" : "Clientes";
   const pageDescription = isMembershipsModule
     ? "Administra los planes de membresía del gimnasio."
@@ -550,6 +552,7 @@ function Clients({ module = "clients" }) {
                     </div>
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                       <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
+                      {canManageClients && (
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
@@ -568,6 +571,7 @@ function Clients({ module = "clients" }) {
                           Eliminar
                         </Button>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -583,6 +587,7 @@ function Clients({ module = "clients" }) {
                       <h3 className="font-semibold">{fullName(client)}</h3>
                       {renderClientMembershipInline(client)}
                     </div>
+                    {canManageClients && (
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                       {renderClientStatusSwitch(client)}
                       <Button
@@ -602,6 +607,7 @@ function Clients({ module = "clients" }) {
                         Eliminar
                       </Button>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -638,6 +644,7 @@ function Clients({ module = "clients" }) {
                   Lista
                 </button>
               </div>
+              {canManageCatalog && (
               <Button
                 className="w-full sm:w-auto"
                 onClick={() => {
@@ -648,8 +655,10 @@ function Clients({ module = "clients" }) {
                 <Plus />
                 Nuevo plan
               </Button>
+              )}
             </div>
 
+            {canManageCatalog && (
             <Sheet
               open={showPlanForm}
               onOpenChange={(open) => {
@@ -732,6 +741,7 @@ function Clients({ module = "clients" }) {
               </form>
               </SheetContent>
             </Sheet>
+            )}
 
             {isLoading ? (
               <div className="space-y-3">
@@ -760,6 +770,7 @@ function Clients({ module = "clients" }) {
                           {plan.description || "Sin descripción"}
                         </p>
                       </div>
+                      {canManageCatalog && (
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
@@ -778,6 +789,7 @@ function Clients({ module = "clients" }) {
                           Eliminar
                         </Button>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -799,6 +811,7 @@ function Clients({ module = "clients" }) {
                     <span className="min-w-0 text-sm text-muted-foreground break-words">
                       {plan.description || "Sin descripción"}
                     </span>
+                    {canManageCatalog && (
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                       <Button
                         size="sm"
@@ -817,6 +830,7 @@ function Clients({ module = "clients" }) {
                         Eliminar
                       </Button>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>

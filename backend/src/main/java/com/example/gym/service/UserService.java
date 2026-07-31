@@ -1,11 +1,15 @@
 package com.example.gym.service;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.gym.dto.CreateUserRequest;
+import com.example.gym.dto.UpdateUserRequest;
 import com.example.gym.dto.UserResponse;
 import com.example.gym.entity.User;
 import com.example.gym.model.Role;
@@ -40,15 +44,63 @@ public class UserService {
 
     @Transactional
     public void seedAdminIfMissing(String username, String password) {
+        seedUserIfMissing(username, password, Role.ADMIN);
+    }
+
+    @Transactional
+    public void seedDefaultUsers() {
+        seedUserIfMissing("sudo", "sudo123", Role.SUDO);
+        seedUserIfMissing("admin", "admin123", Role.ADMIN);
+        seedUserIfMissing("user", "user123", Role.USER);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> findAll() {
+        return userRepository.findAll().stream()
+                .map(UserResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest request) {
+        String username = request.username().trim();
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El usuario ya existe");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setRole(request.role());
+        user.setEnabled(request.enabled() == null || request.enabled());
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse update(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        user.setRole(request.role());
+        if (request.enabled() != null) {
+            user.setEnabled(request.enabled());
+        }
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    private void seedUserIfMissing(String username, String password, Role role) {
         if (userRepository.findByUsername(username).isPresent()) {
             return;
         }
 
-        User admin = new User();
-        admin.setUsername(username);
-        admin.setPasswordHash(passwordEncoder.encode(password));
-        admin.setRole(Role.ADMIN);
-        admin.setEnabled(true);
-        userRepository.save(admin);
+        User user = new User();
+        user.setUsername(username);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setEnabled(true);
+        userRepository.save(user);
     }
 }

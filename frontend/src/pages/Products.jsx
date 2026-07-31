@@ -33,7 +33,7 @@ const EMPTY_PRODUCT = {
 const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
 
 function Products() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,6 +44,7 @@ function Products() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
   const [productView, setProductView] = useState("grid");
+  const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -181,6 +182,7 @@ function Products() {
                 Lista
               </button>
             </div>
+            {canManageCatalog && (
             <Button
               className="w-full sm:w-auto"
               onClick={() => {
@@ -191,8 +193,10 @@ function Products() {
               <PackagePlus />
               Nuevo producto
             </Button>
+            )}
           </div>
 
+          {canManageCatalog && (
           <Sheet
             open={showForm}
             onOpenChange={(open) => {
@@ -280,6 +284,7 @@ function Products() {
               </form>
             </SheetContent>
           </Sheet>
+          )}
 
           {isLoading ? (
             <div className="space-y-3">
@@ -306,6 +311,7 @@ function Products() {
                         {product.description || "Sin descripción"}
                       </p>
                     </div>
+                    {canManageCatalog && (
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button
                         size="sm"
@@ -324,6 +330,7 @@ function Products() {
                         Eliminar
                       </Button>
                     </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -346,6 +353,7 @@ function Products() {
                   <span className="min-w-0 text-sm text-muted-foreground truncate">
                     {product.description || "Sin descripción"}
                   </span>
+                  {canManageCatalog && (
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Button
                       size="sm"
@@ -364,6 +372,7 @@ function Products() {
                       Eliminar
                     </Button>
                   </div>
+                  )}
                 </div>
               ))}
             </div>

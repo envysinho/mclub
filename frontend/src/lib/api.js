@@ -156,3 +156,23 @@ export async function sellProduct(data, onUnauthorized) {
     onUnauthorized
   );
 }
+
+export async function listUsers(onUnauthorized) {
+  return apiFetch("/api/users", {}, onUnauthorized);
+}
+
+export async function createUser(data, onUnauthorized) {
+  return apiFetch(
+    "/api/users",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
+export async function updateUser(id, data, onUnauthorized) {
+  return apiFetch(
+    `/api/users/${id}`,
+    { method: "PUT", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}

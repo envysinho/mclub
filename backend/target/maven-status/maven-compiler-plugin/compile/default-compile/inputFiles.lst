@@ -8,12 +8,14 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MembershipController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MovementController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/ProductController.java
+/home/envy/gym/backend/src/main/java/com/example/gym/controller/UserController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ActiveMembershipResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/AssignMembershipRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ClientResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateClientRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateMembershipPlanRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateProductRequest.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateUserRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/DashboardResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginResponse.java
@@ -24,6 +26,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateClientRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateMembershipPlanRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateProductRequest.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateUserRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UserResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/Client.java
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/ClientMembership.java

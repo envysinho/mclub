@@ -8,12 +8,13 @@ import { useTheme } from "@/hooks/useTheme";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Products from "@/pages/Products";
+import Users from "@/pages/Users";
 import Login from "@/pages/Login";
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const { isDark, toggleTheme } = useTheme();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -23,6 +24,8 @@ function AppContent() {
         return <Clients key="memberships" module="memberships" />;
       case "products":
         return <Products />;
+      case "users":
+        return user?.role === "SUDO" ? <Users /> : <Dashboard />;
       case "dashboard":
       default:
         return <Dashboard />;

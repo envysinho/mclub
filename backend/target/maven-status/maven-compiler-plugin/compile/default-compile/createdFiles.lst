@@ -1,3 +1,4 @@
+com/example/gym/controller/UserController.class
 com/example/gym/dto/MembershipPlanResponse.class
 com/example/gym/entity/Movement.class
 com/example/gym/dto/LoginResponse.class
@@ -33,6 +34,7 @@ com/example/gym/controller/AuthController.class
 com/example/gym/security/UserPrincipal.class
 com/example/gym/service/MembershipStatusService.class
 com/example/gym/repository/ProductRepository.class
+com/example/gym/dto/UpdateUserRequest.class
 com/example/gym/model/Role.class
 com/example/gym/dto/AssignMembershipRequest.class
 com/example/gym/dto/UpdateClientRequest.class
@@ -50,4 +52,5 @@ com/example/gym/dto/UpdateProductRequest.class
 com/example/gym/entity/Client.class
 com/example/gym/controller/ProductController.class
 com/example/gym/service/MovementService.class
+com/example/gym/dto/CreateUserRequest.class
 com/example/gym/dto/UserResponse.class
