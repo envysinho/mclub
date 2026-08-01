@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, List, PackagePlus } from "lucide-react";
+import { LayoutGrid, List, PackagePlus, Pencil, Trash2 } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
   updateProduct,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/constants";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 const EMPTY_PRODUCT = {
@@ -35,6 +36,7 @@ const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr
 
 function Products() {
   const { logout, user } = useAuth();
+  const isMobile = useIsMobile();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -70,6 +72,12 @@ function Products() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setProductView("list");
+    }
+  }, [isMobile]);
 
   const resetForm = () => {
     setProductForm(EMPTY_PRODUCT);
@@ -152,6 +160,52 @@ function Products() {
     </Badge>
   );
 
+  const renderProductListMobileCard = (product) => (
+    <div key={product.id} className="border-b px-3 py-3 last:border-b-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate font-semibold leading-snug">{product.name}</h3>
+          <p
+            className={cn(
+              "mt-1 text-sm text-muted-foreground",
+              product.stock <= 0 && "text-destructive"
+            )}
+          >
+            {formatCurrency(product.price)} · Stock {product.stock}
+          </p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {product.description || "Sin descripción"}
+          </p>
+        </div>
+        {canManageCatalog && (
+          <div className="flex shrink-0 gap-1.5">
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              aria-label={`Editar ${product.name}`}
+              title="Editar producto"
+              onClick={() => openEdit(product)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+              aria-label={`Eliminar ${product.name}`}
+              title="Eliminar producto"
+              onClick={() => setDeleteTarget(product)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <PageCard>
@@ -183,7 +237,7 @@ function Products() {
             >
               <button
                 type="button"
-                className={productViewButtonClass("grid")}
+                className={cn("order-2 sm:order-1", productViewButtonClass("grid"))}
                 aria-pressed={productView === "grid"}
                 onClick={() => setProductView("grid")}
               >
@@ -192,7 +246,7 @@ function Products() {
               </button>
               <button
                 type="button"
-                className={productViewButtonClass("list")}
+                className={cn("order-1 sm:order-2", productViewButtonClass("list"))}
                 aria-pressed={productView === "list"}
                 onClick={() => setProductView("list")}
               >
@@ -311,30 +365,50 @@ function Products() {
               ))}
             </div>
           ) : products.length && productView === "grid" ? (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-3 lg:grid-cols-2">
               {products.map((product) => (
-                <div key={product.id} className="rounded-xl border p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div key={product.id} className="rounded-lg border p-3 sm:rounded-xl sm:p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <h3 className="truncate font-semibold leading-snug">{product.name}</h3>
+                      <p className="text-xs text-muted-foreground sm:text-sm">
                         {formatCurrency(product.price)} · Stock: {product.stock}
                       </p>
                     </div>
                     {renderProductStatus(product)}
                   </div>
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm text-muted-foreground break-words">
+                      <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
                         {product.description || "Sin descripción"}
                       </p>
                     </div>
                     {canManageCatalog && (
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        className="w-full sm:hidden"
+                        aria-label={`Editar ${product.name}`}
+                        title="Editar producto"
+                        onClick={() => openEdit(product)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:hidden"
+                        aria-label={`Eliminar ${product.name}`}
+                        title="Eliminar producto"
+                        onClick={() => setDeleteTarget(product)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 sm:flex-none"
+                        className="hidden sm:inline-flex sm:flex-none"
                         onClick={() => openEdit(product)}
                       >
                         Editar
@@ -342,7 +416,7 @@ function Products() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                        className="hidden border-destructive/30 text-destructive hover:bg-destructive/10 sm:inline-flex sm:flex-none"
                         onClick={() => setDeleteTarget(product)}
                       >
                         Eliminar
@@ -354,46 +428,51 @@ function Products() {
               ))}
             </div>
           ) : products.length ? (
-            <div className="overflow-x-auto rounded-xl border">
-              {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="grid min-w-[920px] items-center gap-4 border-b px-4 py-3 last:border-b-0"
-                  style={{ gridTemplateColumns: PRODUCT_LIST_COLUMNS }}
-                >
-                  <h3 className="min-w-0 font-semibold truncate">{product.name}</h3>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {formatCurrency(product.price)}
-                  </span>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    Stock: {product.stock}
-                  </span>
-                  <span className="min-w-0 text-sm text-muted-foreground truncate">
-                    {product.description || "Sin descripción"}
-                  </span>
-                  {canManageCatalog && (
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => openEdit(product)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
-                      onClick={() => setDeleteTarget(product)}
-                    >
-                      Eliminar
-                    </Button>
+            <>
+              <div className="overflow-hidden rounded-xl border md:hidden">
+                {products.map((product) => renderProductListMobileCard(product))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-xl border md:block">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="grid min-w-[920px] items-center gap-4 border-b px-4 py-3 last:border-b-0"
+                    style={{ gridTemplateColumns: PRODUCT_LIST_COLUMNS }}
+                  >
+                    <h3 className="min-w-0 font-semibold truncate">{product.name}</h3>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {formatCurrency(product.price)}
+                    </span>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      Stock: {product.stock}
+                    </span>
+                    <span className="min-w-0 text-sm text-muted-foreground truncate">
+                      {product.description || "Sin descripción"}
+                    </span>
+                    {canManageCatalog && (
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => openEdit(product)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTarget(product)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
           )}

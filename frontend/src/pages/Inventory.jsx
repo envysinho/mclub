@@ -40,6 +40,64 @@ function signedQuantity(value) {
   return String(value);
 }
 
+function InventoryProductMobileCard({ product, renderStockBadge }) {
+  const metrics = [
+    ["Inicial", product.openingStock],
+    ["Entradas", product.entries],
+    ["Ventas", product.sales],
+    ["Ajustes", signedQuantity(product.adjustments)],
+    ["Esperado", product.expectedStock],
+    ["Actual", product.currentStock],
+  ];
+
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 break-words font-semibold leading-snug">
+          {product.productName}
+        </h3>
+        <div className="shrink-0">{renderStockBadge(product)}</div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {metrics.map(([label, value]) => (
+          <div key={label} className="rounded-lg bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-0.5 font-medium">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StockMovementMobileCard({ movement }) {
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
+              {STOCK_MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(movement.createdAt)}
+            </span>
+          </div>
+          <h3 className="break-words font-medium leading-snug">
+            {movement.productName}
+          </h3>
+          <p className="break-words text-sm text-muted-foreground">
+            {movement.note ?? "Sin nota"}
+          </p>
+        </div>
+        <strong className="shrink-0 whitespace-nowrap text-sm">
+          {signedQuantity(movement.quantityDelta)}
+        </strong>
+      </div>
+    </div>
+  );
+}
+
 function Inventory() {
   const { logout, user } = useAuth();
   const [month, setMonth] = useState(() => formatMonthValue(new Date()));
@@ -344,8 +402,18 @@ function Inventory() {
             ))}
           </div>
         ) : inventory?.products?.length ? (
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[860px] text-sm">
+          <>
+            <div className="grid gap-3 md:hidden">
+              {inventory.products.map((product) => (
+                <InventoryProductMobileCard
+                  key={product.productId}
+                  product={product}
+                  renderStockBadge={renderStockBadge}
+                />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border md:block">
+              <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-3 pl-4 pr-4 font-medium">Producto</th>
@@ -372,8 +440,9 @@ function Inventory() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
         )}
@@ -387,8 +456,14 @@ function Inventory() {
             ))}
           </div>
         ) : inventory?.movements?.length ? (
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[720px] text-sm">
+          <>
+            <div className="grid gap-3 md:hidden">
+              {inventory.movements.map((movement) => (
+                <StockMovementMobileCard key={movement.id} movement={movement} />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border md:block">
+              <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-3 pl-4 pr-4 font-medium">Fecha</th>
@@ -417,8 +492,9 @@ function Inventory() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">No hay movimientos en este mes.</p>
         )}

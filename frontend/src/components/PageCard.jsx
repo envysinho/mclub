@@ -12,7 +12,7 @@ function PageCard({ title, description, children, action }) {
   const hasHeader = hasHeaderText || action;
 
   return (
-    <Card>
+    <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
       {hasHeader && (
         <CardHeader
           className={cn(
@@ -23,7 +23,7 @@ function PageCard({ title, description, children, action }) {
         >
           {hasHeaderText && (
             <div className="min-w-0 space-y-1">
-              {title && <CardTitle className="text-xl font-semibold sm:text-2xl">{title}</CardTitle>}
+              {title && <CardTitle className="text-lg font-semibold sm:text-2xl">{title}</CardTitle>}
               {description && <CardDescription>{description}</CardDescription>}
             </div>
           )}

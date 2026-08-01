@@ -34,6 +34,59 @@ function ReportStat({ icon: Icon, label, value, hint }) {
   );
 }
 
+function ReportRows({ rows }) {
+  return (
+    <div className="overflow-hidden rounded-xl border">
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="flex items-center justify-between gap-4 border-b px-4 py-3 text-sm last:border-b-0"
+        >
+          <span className={row.total ? "font-medium" : "text-muted-foreground"}>
+            {row.label}
+          </span>
+          <span className={row.total ? "font-semibold" : "font-medium"}>
+            {row.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportMovementMobileCard({ movement }) {
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
+              {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(movement.createdAt)}
+            </span>
+          </div>
+          <h3 className="break-words font-medium leading-snug">
+            {movement.description}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {movement.clientName ?? "Sin cliente"}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <strong className="block whitespace-nowrap text-sm">
+            {formatCurrency(movement.amount)}
+          </strong>
+          <span className="text-xs text-muted-foreground">
+            Cant. {movement.quantity}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Reports() {
   const { logout } = useAuth();
   const [month, setMonth] = useState(() => formatMonthValue(new Date()));
@@ -67,6 +120,31 @@ function Reports() {
     () => monthOptions.find((option) => option.value === month) ?? monthOptions[0],
     [month, monthOptions]
   );
+  const incomeRows = [
+    {
+      label: "Nuevas membresías",
+      value: formatCurrency(report?.newMembershipRevenue ?? 0),
+    },
+    {
+      label: "Renovaciones",
+      value: formatCurrency(report?.renewalRevenue ?? 0),
+    },
+    {
+      label: "Productos",
+      value: formatCurrency(report?.productRevenue ?? 0),
+    },
+    {
+      label: "Total",
+      value: formatCurrency(report?.totalRevenue ?? 0),
+      total: true,
+    },
+  ];
+  const activityRows = [
+    { label: "Matriculados", value: report?.newMemberships ?? 0 },
+    { label: "Renovaciones", value: report?.renewals ?? 0 },
+    { label: "Ventas de producto", value: report?.productSales ?? 0 },
+    { label: "Unidades vendidas", value: report?.productUnits ?? 0, total: true },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -162,36 +240,7 @@ function Reports() {
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border">
-              <table className="w-full min-w-[420px] text-sm">
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Nuevas membresías</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {formatCurrency(report?.newMembershipRevenue ?? 0)}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Renovaciones</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {formatCurrency(report?.renewalRevenue ?? 0)}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Productos</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {formatCurrency(report?.productRevenue ?? 0)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 pl-4 pr-4 font-medium">Total</td>
-                    <td className="py-3 pr-4 text-right font-semibold">
-                      {formatCurrency(report?.totalRevenue ?? 0)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ReportRows rows={incomeRows} />
           )}
         </PageCard>
 
@@ -203,36 +252,7 @@ function Reports() {
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border">
-              <table className="w-full min-w-[420px] text-sm">
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Matriculados</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {report?.newMemberships ?? 0}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Renovaciones</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {report?.renewals ?? 0}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3 pl-4 pr-4 text-muted-foreground">Ventas de producto</td>
-                    <td className="py-3 pr-4 text-right font-medium">
-                      {report?.productSales ?? 0}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 pl-4 pr-4 font-medium">Unidades vendidas</td>
-                    <td className="py-3 pr-4 text-right font-semibold">
-                      {report?.productUnits ?? 0}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ReportRows rows={activityRows} />
           )}
         </PageCard>
       </div>
@@ -245,8 +265,14 @@ function Reports() {
             ))}
           </div>
         ) : report?.movements?.length ? (
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[760px] text-sm">
+          <>
+            <div className="grid gap-3 md:hidden">
+              {report.movements.map((movement) => (
+                <ReportMovementMobileCard key={movement.id} movement={movement} />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border md:block">
+              <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-3 pl-4 pr-4 font-medium">Fecha</th>
@@ -277,8 +303,9 @@ function Reports() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">No hay movimientos en este mes.</p>
         )}

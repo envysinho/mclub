@@ -80,15 +80,58 @@ function getMembershipDates(plan, startDate = formatDateInput(new Date())) {
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold">{value}</p>
+    <div className="rounded-lg border bg-card p-3 sm:rounded-xl sm:p-4">
+      <div className="flex min-h-20 items-start justify-between gap-2 sm:min-h-0 sm:gap-3">
+        <div className="min-w-0">
+          <p className="text-xs leading-snug text-muted-foreground sm:text-sm">{label}</p>
+          <p className="mt-1 truncate text-xl font-semibold sm:text-2xl">{value}</p>
           {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">
-          <Icon className="size-5" />
+        <div className="rounded-md bg-primary/10 p-1.5 text-primary sm:rounded-lg sm:p-2">
+          <Icon className="size-4 sm:size-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MovementMobileCard({ movement, canDeleteMovements, onDelete }) {
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
+              {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(movement.createdAt)}
+            </span>
+          </div>
+          <h3 className="break-words font-medium leading-snug">
+            {movement.description}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {movement.clientName ?? "Sin cliente"}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <strong className="whitespace-nowrap text-sm">
+            {formatCurrency(movement.amount)}
+          </strong>
+          {canDeleteMovements && (
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+              aria-label={`Eliminar ${movement.description}`}
+              title="Eliminar movimiento"
+              onClick={() => onDelete(movement)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -549,10 +592,10 @@ function Dashboard() {
           </p>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-28 rounded-xl" />
+              <Skeleton key={index} className="h-26 rounded-lg sm:h-28 sm:rounded-xl" />
             ))
           ) : (
             <>
@@ -589,8 +632,22 @@ function Dashboard() {
             ))}
           </div>
         ) : data?.recentMovements?.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+          <>
+            <div className="grid gap-3 md:hidden">
+              {data.recentMovements.map((movement) => (
+                <MovementMobileCard
+                  key={movement.id}
+                  movement={movement}
+                  canDeleteMovements={canDeleteMovements}
+                  onDelete={(target) => {
+                    setDeleteTarget(target);
+                    setDeleteError(null);
+                  }}
+                />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-3 pr-4 font-medium">Fecha</th>
@@ -640,8 +697,9 @@ function Dashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">
             Aún no hay movimientos registrados.
@@ -653,7 +711,7 @@ function Dashboard() {
         type="button"
         aria-label="Nueva venta"
         title="Nueva venta"
-        className="fixed bottom-5 right-5 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
         onClick={() => setShowSaleSheet(true)}
       >
         <ShoppingCart className="size-5" />

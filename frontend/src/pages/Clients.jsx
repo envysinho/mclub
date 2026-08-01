@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List, Plus, UserPlus } from "lucide-react";
+import { LayoutGrid, List, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
   formatDate,
   fullName,
 } from "@/lib/constants";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 const EMPTY_CLIENT = {
@@ -82,6 +83,7 @@ function membershipUrgencyClass(client) {
 
 function Clients({ module = "clients" }) {
   const { logout, user } = useAuth();
+  const isMobile = useIsMobile();
   const [clients, setClients] = useState([]);
   const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +129,12 @@ function Clients({ module = "clients" }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (module === "memberships" && isMobile) {
+      setPlanView("list");
+    }
+  }, [isMobile, module]);
 
   const sortedClients = useMemo(
     () =>
@@ -654,7 +662,7 @@ function Clients({ module = "clients" }) {
               >
                 <button
                   type="button"
-                  className={planViewButtonClass("grid")}
+                  className={cn("order-2 sm:order-1", planViewButtonClass("grid"))}
                   aria-pressed={planView === "grid"}
                   onClick={() => setPlanView("grid")}
                 >
@@ -663,7 +671,7 @@ function Clients({ module = "clients" }) {
                 </button>
                 <button
                   type="button"
-                  className={planViewButtonClass("list")}
+                  className={cn("order-1 sm:order-2", planViewButtonClass("list"))}
                   aria-pressed={planView === "list"}
                   onClick={() => setPlanView("list")}
                 >
@@ -777,28 +785,126 @@ function Clients({ module = "clients" }) {
                 ))}
               </div>
             ) : plans.length && planView === "grid" ? (
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-3 lg:grid-cols-2">
                 {plans.map((plan) => (
-                  <div key={plan.id} className="rounded-xl border p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div key={plan.id} className="rounded-lg border p-3 sm:rounded-xl sm:p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                       <div className="min-w-0">
-                        <h3 className="font-semibold">{plan.name}</h3>
-                        <p className="text-sm text-muted-foreground">
+                        <h3 className="truncate font-semibold leading-snug">{plan.name}</h3>
+                        <p className="text-xs text-muted-foreground sm:text-sm">
                           {plan.durationDays} días
                         </p>
                       </div>
-                      <Badge className="w-fit shrink-0">
+                      <Badge className="w-fit shrink-0 text-xs">
                         {formatCurrency(plan.price)}
                       </Badge>
                     </div>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-sm text-muted-foreground break-words">
+                        <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
                           {plan.description || "Sin descripción"}
                         </p>
                       </div>
                       {canManageCatalog && (
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          className="w-full sm:hidden"
+                          aria-label={`Editar ${plan.name}`}
+                          title="Editar plan"
+                          onClick={() => openEditPlan(plan)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:hidden"
+                          aria-label={`Eliminar ${plan.name}`}
+                          title="Eliminar plan"
+                          onClick={() => setDeleteTarget({ type: "plan", item: plan })}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="hidden sm:inline-flex sm:flex-none"
+                          onClick={() => openEditPlan(plan)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="hidden border-destructive/30 text-destructive hover:bg-destructive/10 sm:inline-flex sm:flex-none"
+                          onClick={() => setDeleteTarget({ type: "plan", item: plan })}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : plans.length ? (
+              <div className="overflow-hidden rounded-xl border">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="border-b last:border-b-0"
+                  >
+                    <div className="flex items-start justify-between gap-3 px-3 py-3 lg:hidden">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold leading-snug">{plan.name}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {formatCurrency(plan.price)} · {plan.durationDays} días
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {plan.description || "Sin descripción"}
+                        </p>
+                      </div>
+                      {canManageCatalog && (
+                        <div className="flex shrink-0 gap-1.5">
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={`Editar ${plan.name}`}
+                            title="Editar plan"
+                            onClick={() => openEditPlan(plan)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="outline"
+                            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                            aria-label={`Eliminar ${plan.name}`}
+                            title="Eliminar plan"
+                            onClick={() => setDeleteTarget({ type: "plan", item: plan })}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="hidden min-h-14 grid-cols-[minmax(8rem,0.8fr)_7.5rem_5.5rem_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 lg:grid">
+                      <h3 className="min-w-0 font-semibold">{plan.name}</h3>
+                      <span className="text-sm text-muted-foreground">
+                        {formatCurrency(plan.price)}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {plan.durationDays} días
+                      </span>
+                      <span className="min-w-0 text-sm text-muted-foreground break-words">
+                        {plan.description || "Sin descripción"}
+                      </span>
+                      {canManageCatalog && (
+                      <div className="flex flex-wrap gap-2 justify-end">
                         <Button
                           size="sm"
                           variant="outline"
@@ -818,46 +924,6 @@ function Clients({ module = "clients" }) {
                       </div>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : plans.length ? (
-              <div className="overflow-hidden rounded-xl border">
-                {plans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 lg:min-h-14 lg:grid-cols-[minmax(8rem,0.8fr)_7.5rem_5.5rem_minmax(0,1fr)_auto] lg:items-center lg:gap-4"
-                  >
-                    <h3 className="min-w-0 font-semibold">{plan.name}</h3>
-                    <span className="text-sm text-muted-foreground">
-                      {formatCurrency(plan.price)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {plan.durationDays} días
-                    </span>
-                    <span className="min-w-0 text-sm text-muted-foreground break-words">
-                      {plan.description || "Sin descripción"}
-                    </span>
-                    {canManageCatalog && (
-                    <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 sm:flex-none"
-                        onClick={() => openEditPlan(plan)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => setDeleteTarget({ type: "plan", item: plan })}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                    )}
                   </div>
                 ))}
               </div>

@@ -3,12 +3,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 function AppHeader({ title, description, isDark, onToggleTheme }) {
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-20 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:gap-3 sm:px-4">
       <SidebarTrigger className="-ml-1 md:hidden" />
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <span className="shrink-0 font-semibold">{title}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-0.5">
+        <span className="truncate font-semibold">{title}</span>
         {description && (
-          <span className="min-w-0 truncate text-sm text-muted-foreground">
+          <span className="hidden min-w-0 truncate text-sm text-muted-foreground sm:block">
             {description}
           </span>
         )}

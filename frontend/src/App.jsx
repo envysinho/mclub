@@ -86,7 +86,7 @@ function AppContent() {
             isDark={isDark}
             onToggleTheme={toggleTheme}
           />
-          <div className="flex flex-1 flex-col gap-4 p-4">{renderPage()}</div>
+          <div className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4">{renderPage()}</div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
