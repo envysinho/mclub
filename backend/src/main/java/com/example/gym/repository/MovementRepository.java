@@ -13,6 +13,9 @@ import com.example.gym.entity.Movement;
 public interface MovementRepository extends JpaRepository<Movement, Long> {
     List<Movement> findTop20ByOrderByCreatedAtDesc();
 
+    @Query("SELECT m FROM Movement m WHERE m.createdAt >= :start AND m.createdAt < :end ORDER BY m.createdAt DESC")
+    List<Movement> findByCreatedAtBetweenOrderByCreatedAtDesc(@Param("start") Instant start, @Param("end") Instant end);
+
     @Query("SELECT COALESCE(SUM(m.amount), 0) FROM Movement m WHERE m.createdAt >= :start AND m.createdAt < :end")
     java.math.BigDecimal sumAmountBetween(@Param("start") Instant start, @Param("end") Instant end);
 

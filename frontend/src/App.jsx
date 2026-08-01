@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Inventory from "@/pages/Inventory";
 import Products from "@/pages/Products";
+import Reports from "@/pages/Reports";
 import Users from "@/pages/Users";
 import Login from "@/pages/Login";
 
@@ -33,6 +34,10 @@ const PAGE_META = {
     title: "Inventario",
     description: "Revisa stock mensual, entradas, ventas y ajustes.",
   },
+  reports: {
+    title: "Reportes",
+    description: "Revisa matriculados, ventas e ingresos por mes.",
+  },
   users: {
     title: "Usuarios",
     description: "Administra accesos, roles y estado de los usuarios.",
@@ -54,6 +59,8 @@ function AppContent() {
         return <Products />;
       case "inventory":
         return <Inventory />;
+      case "reports":
+        return <Reports />;
       case "users":
         return user?.role === "SUDO" ? <Users /> : <Dashboard />;
       case "dashboard":

@@ -9,6 +9,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MembershipController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MovementController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/ProductController.java
+/home/envy/gym/backend/src/main/java/com/example/gym/controller/ReportController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/UserController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ActiveMembershipResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/AssignMembershipRequest.java
@@ -24,6 +25,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/MembershipPlanResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/MonthlyReportResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/MovementResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ProductResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ProductSaleRequest.java
@@ -64,4 +66,5 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipStatusService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MovementService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ProductService.java
+/home/envy/gym/backend/src/main/java/com/example/gym/service/ReportService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/UserService.java

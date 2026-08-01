@@ -3,7 +3,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 function AppHeader({ title, description, isDark, onToggleTheme }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <SidebarTrigger className="-ml-1 md:hidden" />
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
         <span className="shrink-0 font-semibold">{title}</span>

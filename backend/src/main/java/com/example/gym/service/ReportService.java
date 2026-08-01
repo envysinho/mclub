@@ -1,0 +1,96 @@
+package com.example.gym.service;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.example.gym.dto.MonthlyReportResponse;
+import com.example.gym.dto.MovementResponse;
+import com.example.gym.entity.Movement;
+import com.example.gym.model.MovementType;
+import com.example.gym.repository.MovementRepository;
+
+@Service
+public class ReportService {
+
+    private final MovementRepository movementRepository;
+
+    public ReportService(MovementRepository movementRepository) {
+        this.movementRepository = movementRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public MonthlyReportResponse getMonthlyReport(String month) {
+        YearMonth selectedMonth = parseMonth(month);
+        ZoneId zone = ZoneId.systemDefault();
+        Instant start = selectedMonth.atDay(1).atStartOfDay(zone).toInstant();
+        Instant end = selectedMonth.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
+
+        List<Movement> movements = movementRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(start, end);
+
+        long newMemberships = countByType(movements, MovementType.MEMBERSHIP_SALE);
+        long renewals = countByType(movements, MovementType.MEMBERSHIP_RENEWAL);
+        long productSales = countByType(movements, MovementType.PRODUCT_SALE);
+        int productUnits = movements.stream()
+                .filter(movement -> movement.getType() == MovementType.PRODUCT_SALE)
+                .mapToInt(Movement::getQuantity)
+                .sum();
+
+        BigDecimal newMembershipRevenue = sumByType(movements, MovementType.MEMBERSHIP_SALE);
+        BigDecimal renewalRevenue = sumByType(movements, MovementType.MEMBERSHIP_RENEWAL);
+        BigDecimal membershipRevenue = newMembershipRevenue.add(renewalRevenue);
+        BigDecimal productRevenue = sumByType(movements, MovementType.PRODUCT_SALE);
+        BigDecimal totalRevenue = membershipRevenue.add(productRevenue);
+
+        List<MovementResponse> movementResponses = movements.stream()
+                .map(MovementResponse::from)
+                .toList();
+
+        return new MonthlyReportResponse(
+                selectedMonth.toString(),
+                newMemberships,
+                renewals,
+                newMemberships + renewals,
+                productSales,
+                productUnits,
+                newMembershipRevenue,
+                renewalRevenue,
+                membershipRevenue,
+                productRevenue,
+                totalRevenue,
+                movementResponses);
+    }
+
+    private long countByType(List<Movement> movements, MovementType type) {
+        return movements.stream()
+                .filter(movement -> movement.getType() == type)
+                .count();
+    }
+
+    private BigDecimal sumByType(List<Movement> movements, MovementType type) {
+        return movements.stream()
+                .filter(movement -> movement.getType() == type)
+                .map(Movement::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private YearMonth parseMonth(String month) {
+        if (month == null || month.isBlank()) {
+            return YearMonth.from(LocalDate.now());
+        }
+
+        try {
+            return YearMonth.parse(month.trim());
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mes inválido");
+        }
+    }
+}

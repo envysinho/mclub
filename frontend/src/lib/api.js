@@ -170,6 +170,11 @@ export async function getInventory(month, onUnauthorized) {
   return apiFetch(`/api/inventory${search}`, {}, onUnauthorized);
 }
 
+export async function getMonthlyReport(month, onUnauthorized) {
+  const search = month ? `?month=${encodeURIComponent(month)}` : "";
+  return apiFetch(`/api/reports/monthly${search}`, {}, onUnauthorized);
+}
+
 export async function createStockMovement(data, onUnauthorized) {
   return apiFetch(
     "/api/inventory/movements",

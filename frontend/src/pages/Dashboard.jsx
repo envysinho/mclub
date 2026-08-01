@@ -48,8 +48,35 @@ const EMPTY_SALE_FORM = {
   planId: "",
   productId: "",
   quantity: "1",
+  startDate: "",
+  endDate: "",
   client: EMPTY_SALE_CLIENT,
 };
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDaysToInputDate(dateValue, days) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return formatDateInput(date);
+}
+
+function getMembershipDates(plan, startDate = formatDateInput(new Date())) {
+  if (!plan) {
+    return { startDate, endDate: "" };
+  }
+
+  return {
+    startDate,
+    endDate: addDaysToInputDate(startDate, plan.durationDays),
+  };
+}
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
@@ -179,6 +206,8 @@ function Dashboard() {
           {
             clientId,
             planId: Number(saleForm.planId),
+            startDate: saleForm.startDate || null,
+            endDate: saleForm.endDate || null,
           },
           handleUnauthorized
         );
@@ -200,6 +229,29 @@ function Dashboard() {
     } finally {
       setIsSaleSubmitting(false);
     }
+  };
+
+  const handleMembershipPlanChange = (planId) => {
+    const plan = plans.find((currentPlan) => currentPlan.id === Number(planId));
+    const dates = plan ? getMembershipDates(plan, saleForm.startDate || undefined) : {
+      startDate: "",
+      endDate: "",
+    };
+
+    setSaleForm({
+      ...saleForm,
+      planId,
+      startDate: dates.startDate,
+      endDate: dates.endDate,
+    });
+  };
+
+  const handleMembershipStartDateChange = (startDate) => {
+    setSaleForm({
+      ...saleForm,
+      startDate,
+      endDate: selectedPlan && startDate ? addDaysToInputDate(startDate, selectedPlan.durationDays) : "",
+    });
   };
 
   const handleDeleteMovement = async (movement, confirmationPassword) => {
@@ -270,7 +322,15 @@ function Dashboard() {
                 <button
                   type="button"
                   className={saleTypeButtonClass("product")}
-                  onClick={() => setSaleForm({ ...saleForm, type: "product", planId: "" })}
+                  onClick={() =>
+                    setSaleForm({
+                      ...saleForm,
+                      type: "product",
+                      planId: "",
+                      startDate: "",
+                      endDate: "",
+                    })
+                  }
                 >
                   Producto
                 </button>
@@ -381,24 +441,50 @@ function Dashboard() {
               )}
 
               {saleForm.type === "membership" ? (
-                <div className="space-y-2">
-                  <Label htmlFor="salePlan">Plan de membresía</Label>
-                  <select
-                    id="salePlan"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                    value={saleForm.planId}
-                    onChange={(event) =>
-                      setSaleForm({ ...saleForm, planId: event.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Seleccionar plan</option>
-                    {plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="salePlan">Plan de membresía</Label>
+                    <select
+                      id="salePlan"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                      value={saleForm.planId}
+                      onChange={(event) =>
+                        handleMembershipPlanChange(event.target.value)
+                      }
+                      required
+                    >
+                      <option value="">Seleccionar plan</option>
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="saleStartDate">Inicio</Label>
+                      <Input
+                        id="saleStartDate"
+                        type="date"
+                        value={saleForm.startDate}
+                        onChange={(event) =>
+                          handleMembershipStartDateChange(event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="saleEndDate">Fin</Label>
+                      <Input
+                        id="saleEndDate"
+                        type="date"
+                        value={saleForm.endDate}
+                        onChange={(event) =>
+                          setSaleForm({ ...saleForm, endDate: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">

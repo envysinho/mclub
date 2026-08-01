@@ -1,4 +1,4 @@
-import { Boxes, CreditCard, LayoutDashboard, Package, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, Boxes, CreditCard, LayoutDashboard, Package, ShieldCheck, Users } from "lucide-react";
 import NavUser from "@/components/NavUser";
 import {
   Sidebar,
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { id: "memberships", icon: CreditCard, label: "Membresías" },
   { id: "products", icon: Package, label: "Productos" },
   { id: "inventory", icon: Boxes, label: "Inventario" },
+  { id: "reports", icon: BarChart3, label: "Reportes" },
   { id: "users", icon: ShieldCheck, label: "Usuarios", roles: ["SUDO"] },
 ];
 

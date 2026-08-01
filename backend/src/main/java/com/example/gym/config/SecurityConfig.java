@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/movements/**").hasRole("SUDO")
                         .requestMatchers(HttpMethod.GET, "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/inventory/**").hasAnyRole("SUDO", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/reports/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/clients/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/clients")
                         .hasAnyRole("SUDO", "ADMIN", "USER")

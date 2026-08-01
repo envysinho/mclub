@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { createStockMovement, getInventory } from "@/lib/api";
 import { formatDate, STOCK_MOVEMENT_TYPE_LABELS } from "@/lib/constants";
+import { buildMonthOptions, formatMonthValue } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
 const EMPTY_MOVEMENT = {
@@ -33,19 +34,6 @@ const EMPTY_MOVEMENT = {
   quantity: "",
   note: "",
 };
-
-function formatMonthValue(date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${date.getFullYear()}-${month}`;
-}
-
-function buildMonthOptions() {
-  const currentMonth = formatMonthValue(new Date());
-  return Array.from(new Set([currentMonth, "2026-08", "2026-09"])).map((value) => ({
-    value,
-    label: value === currentMonth ? `${value} · este mes` : value,
-  }));
-}
 
 function signedQuantity(value) {
   if (value > 0) return `+${value}`;

@@ -88,7 +88,10 @@ public class MembershipService {
         });
 
         LocalDate startDate = request.startDate() != null ? request.startDate() : LocalDate.now();
-        LocalDate endDate = startDate.plusDays(plan.getDurationDays());
+        LocalDate endDate = request.endDate() != null ? request.endDate() : startDate.plusDays(plan.getDurationDays());
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de fin no puede ser anterior al inicio");
+        }
 
         boolean hasPreviousMembership = clientMembershipRepository.countByClientId(client.getId()) > 0;
 
