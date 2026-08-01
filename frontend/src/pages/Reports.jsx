@@ -16,18 +16,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getMonthlyReport } from "@/lib/api";
 import { formatCurrency, formatDate, MOVEMENT_TYPE_LABELS } from "@/lib/constants";
 import { buildMonthOptions, formatMonthValue } from "@/lib/months";
+import { cn } from "@/lib/utils";
 
-function ReportStat({ icon: Icon, label, value, hint }) {
+function ReportStat({ icon: Icon, label, value, hint, className }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
+    <div className={cn("rounded-lg border bg-card p-3 sm:rounded-xl sm:p-4", className)}>
+      <div className="flex min-h-20 items-start justify-between gap-2 sm:min-h-0 sm:gap-3">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold">{value}</p>
+          <p className="text-xs leading-snug text-muted-foreground sm:text-sm">{label}</p>
+          <p className="mt-1 truncate text-xl font-semibold sm:text-2xl">{value}</p>
           {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">
-          <Icon className="size-5" />
+        <div className="rounded-md bg-primary/10 p-1.5 text-primary sm:rounded-lg sm:p-2">
+          <Icon className="size-4 sm:size-5" />
         </div>
       </div>
     </div>
@@ -36,16 +37,24 @@ function ReportStat({ icon: Icon, label, value, hint }) {
 
 function ReportRows({ rows }) {
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border bg-card">
       {rows.map((row) => (
         <div
           key={row.label}
-          className="flex items-center justify-between gap-4 border-b px-4 py-3 text-sm last:border-b-0"
+          className={cn(
+            "flex items-center justify-between gap-4 border-b px-3 py-3 text-sm last:border-b-0 sm:px-4",
+            row.total && "bg-muted/30"
+          )}
         >
-          <span className={row.total ? "font-medium" : "text-muted-foreground"}>
+          <span
+            className={cn(
+              "min-w-0 break-words",
+              row.total ? "font-medium" : "text-muted-foreground"
+            )}
+          >
             {row.label}
           </span>
-          <span className={row.total ? "font-semibold" : "font-medium"}>
+          <span className={cn("shrink-0 text-right", row.total ? "font-semibold" : "font-medium")}>
             {row.value}
           </span>
         </div>
@@ -75,10 +84,10 @@ function ReportMovementMobileCard({ movement }) {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <strong className="block whitespace-nowrap text-sm">
+          <strong className="block whitespace-nowrap rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
             {formatCurrency(movement.amount)}
           </strong>
-          <span className="text-xs text-muted-foreground">
+          <span className="mt-1 block text-xs text-muted-foreground">
             Cant. {movement.quantity}
           </span>
         </div>
@@ -192,10 +201,10 @@ function Reports() {
         </Combobox>
       </PageCard>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-5">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-24 rounded-xl" />
+            <Skeleton key={index} className="h-26 rounded-lg sm:h-28 sm:rounded-xl" />
           ))
         ) : (
           <>
@@ -226,6 +235,7 @@ function Reports() {
               icon={TrendingUp}
               label="Ingresos"
               value={formatCurrency(report?.totalRevenue ?? 0)}
+              className="col-span-2 sm:col-span-1"
             />
           </>
         )}

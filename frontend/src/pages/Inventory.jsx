@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PackagePlus, SlidersHorizontal } from "lucide-react";
+import {
+  PackageCheck,
+  PackagePlus,
+  RotateCcw,
+  SlidersHorizontal,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,27 +47,56 @@ function signedQuantity(value) {
   return String(value);
 }
 
+function InventoryStatCard({ icon: Icon, label, value, hint }) {
+  return (
+    <div className="rounded-lg border bg-card p-3 sm:rounded-xl sm:p-4">
+      <div className="flex min-h-20 items-start justify-between gap-2 sm:min-h-0 sm:gap-3">
+        <div className="min-w-0">
+          <p className="text-xs leading-snug text-muted-foreground sm:text-sm">{label}</p>
+          <p className="mt-1 truncate text-xl font-semibold sm:text-2xl">{value}</p>
+          {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+        </div>
+        <div className="rounded-md bg-primary/10 p-1.5 text-primary sm:rounded-lg sm:p-2">
+          <Icon className="size-4 sm:size-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InventoryProductMobileCard({ product, renderStockBadge }) {
+  const difference = product.currentStock - product.expectedStock;
   const metrics = [
-    ["Inicial", product.openingStock],
-    ["Entradas", product.entries],
-    ["Ventas", product.sales],
-    ["Ajustes", signedQuantity(product.adjustments)],
-    ["Esperado", product.expectedStock],
-    ["Actual", product.currentStock],
+    ["Inicial", product.openingStock, "default"],
+    ["Entradas", product.entries, "positive"],
+    ["Ventas", product.sales, "default"],
+    ["Ajustes", signedQuantity(product.adjustments), "default"],
+    ["Esperado", product.expectedStock, "default"],
+    ["Actual", product.currentStock, difference === 0 ? "strong" : "warning"],
   ];
 
   return (
     <div className="rounded-xl border bg-card p-3">
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 break-words font-semibold leading-snug">
-          {product.productName}
-        </h3>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Producto</p>
+          <h3 className="mt-0.5 break-words font-semibold leading-snug">
+            {product.productName}
+          </h3>
+        </div>
         <div className="shrink-0">{renderStockBadge(product)}</div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {metrics.map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-muted/40 px-3 py-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {metrics.map(([label, value, tone]) => (
+          <div
+            key={label}
+            className={cn(
+              "rounded-lg border bg-muted/30 px-3 py-2",
+              tone === "strong" && "border-primary/20 bg-primary/5",
+              tone === "positive" && "border-emerald-500/20 bg-emerald-500/5",
+              tone === "warning" && "border-yellow-500/30 bg-yellow-500/10"
+            )}
+          >
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-0.5 font-medium">{value}</p>
           </div>
@@ -71,6 +107,8 @@ function InventoryProductMobileCard({ product, renderStockBadge }) {
 }
 
 function StockMovementMobileCard({ movement }) {
+  const isNegative = movement.quantityDelta < 0;
+
   return (
     <div className="rounded-xl border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
@@ -90,7 +128,14 @@ function StockMovementMobileCard({ movement }) {
             {movement.note ?? "Sin nota"}
           </p>
         </div>
-        <strong className="shrink-0 whitespace-nowrap text-sm">
+        <strong
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-sm",
+            isNegative
+              ? "bg-destructive/10 text-destructive"
+              : "bg-primary/10 text-primary"
+          )}
+        >
           {signedQuantity(movement.quantityDelta)}
         </strong>
       </div>
@@ -250,18 +295,6 @@ function Inventory() {
             </ComboboxContent>
           </Combobox>
 
-          {canManageInventory && (
-            <Button
-              className="w-full sm:w-auto"
-              onClick={() => {
-                resetMovementForm();
-                setShowMovementForm(true);
-              }}
-            >
-              <PackagePlus />
-              Movimiento de stock
-            </Button>
-          )}
         </div>
 
         {canManageInventory && (
@@ -367,29 +400,33 @@ function Inventory() {
         )}
       </PageCard>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-24 rounded-xl" />
+            <Skeleton key={index} className="h-26 rounded-lg sm:h-28 sm:rounded-xl" />
           ))
         ) : (
           <>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Entradas del mes</p>
-              <p className="mt-1 text-2xl font-semibold">{totals.entries}</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Ventas del mes</p>
-              <p className="mt-1 text-2xl font-semibold">{totals.sales}</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Ajustes del mes</p>
-              <p className="mt-1 text-2xl font-semibold">{signedQuantity(totals.adjustments)}</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Stock actual</p>
-              <p className="mt-1 text-2xl font-semibold">{totals.currentStock}</p>
-            </div>
+            <InventoryStatCard
+              icon={TrendingUp}
+              label="Entradas del mes"
+              value={totals.entries}
+            />
+            <InventoryStatCard
+              icon={TrendingDown}
+              label="Ventas del mes"
+              value={totals.sales}
+            />
+            <InventoryStatCard
+              icon={RotateCcw}
+              label="Ajustes del mes"
+              value={signedQuantity(totals.adjustments)}
+            />
+            <InventoryStatCard
+              icon={PackageCheck}
+              label="Stock actual"
+              value={totals.currentStock}
+            />
           </>
         )}
       </div>
@@ -499,6 +536,22 @@ function Inventory() {
           <p className="text-sm text-muted-foreground">No hay movimientos en este mes.</p>
         )}
       </PageCard>
+
+      {canManageInventory && (
+        <Button
+          type="button"
+          aria-label="Movimiento de stock"
+          title="Movimiento de stock"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
+          onClick={() => {
+            resetMovementForm();
+            setShowMovementForm(true);
+          }}
+        >
+          <PackagePlus className="size-5" />
+          <span className="hidden sm:inline">Movimiento de stock</span>
+        </Button>
+      )}
     </div>
   );
 }

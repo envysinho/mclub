@@ -256,7 +256,7 @@ function Products() {
             </div>
             {canManageCatalog && (
             <Button
-              className="w-full sm:w-auto"
+              className="hidden sm:inline-flex"
               onClick={() => {
                 resetForm();
                 setShowForm(true);
@@ -478,6 +478,21 @@ function Products() {
           )}
         </div>
       </PageCard>
+
+      {canManageCatalog && (
+        <Button
+          type="button"
+          aria-label="Nuevo producto"
+          title="Nuevo producto"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:hidden"
+          onClick={() => {
+            resetForm();
+            setShowForm(true);
+          }}
+        >
+          <PackagePlus className="size-5" />
+        </Button>
+      )}
     </div>
   );
 }

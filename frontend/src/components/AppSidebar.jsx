@@ -45,27 +45,29 @@ function AppSidebar({ currentPage, onNavigate }) {
 
   return (
     <Sidebar collapsible="none">
-      <SidebarHeader className="overflow-hidden border-b border-sidebar-border">
-        <div className="flex h-[39px] min-w-0 items-center overflow-hidden px-4">
+      <SidebarHeader className="overflow-hidden border-b border-sidebar-border px-3 py-3 pr-12 md:p-2 md:pr-2">
+        <div className="flex h-12 min-w-0 items-center overflow-hidden px-2 md:h-[39px] md:px-4">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-[10.3px] tracking-normal text-sidebar-foreground/70">
+              <span className="truncate text-xs tracking-normal text-sidebar-foreground/70 md:text-[10.3px]">
                 Gestión integral
               </span>
-              <strong className="truncate text-sm font-semibold">MClub Gym</strong>
+              <strong className="truncate text-lg font-semibold md:text-sm">MClub Gym</strong>
             </div>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup className="gap-2">
+        <SidebarGroup className="gap-3 p-3 md:gap-2 md:p-2">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-y-0.5">
+            <SidebarMenu className="gap-y-1 md:gap-y-0.5">
               {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user?.role)).map(({ id, icon: Icon, label }) => (
                 <SidebarMenuItem key={id}>
                   <SidebarMenuButton
                     isActive={currentPage === id}
+                    size={isMobile ? "lg" : "default"}
+                    className={isMobile ? "rounded-xl px-3 text-base [&_svg]:size-5" : undefined}
                     tooltip={label}
                     onClick={() => handleNavigation(id)}
                   >
@@ -80,7 +82,7 @@ function AppSidebar({ currentPage, onNavigate }) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
         <NavUser user={user} onLogout={handleLogout} />
       </SidebarFooter>
     </Sidebar>

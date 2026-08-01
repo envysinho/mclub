@@ -149,6 +149,8 @@ function Dashboard() {
   const [showSaleSheet, setShowSaleSheet] = useState(false);
   const [saleForm, setSaleForm] = useState(EMPTY_SALE_FORM);
   const [saleError, setSaleError] = useState(null);
+  const [isSaleOptionsLoading, setIsSaleOptionsLoading] = useState(false);
+  const [saleOptionsLoaded, setSaleOptionsLoaded] = useState(false);
   const [isSaleSubmitting, setIsSaleSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -164,16 +166,8 @@ function Dashboard() {
     setError(null);
     setIsLoading(true);
     try {
-      const [response, clientsData, plansData, productsData] = await Promise.all([
-        getDashboard(handleUnauthorized),
-        listClients(handleUnauthorized),
-        listMembershipPlans(handleUnauthorized),
-        listProducts(handleUnauthorized),
-      ]);
+      const response = await getDashboard(handleUnauthorized);
       setData(response);
-      setClients(clientsData);
-      setPlans(plansData);
-      setProducts(productsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar el dashboard");
     } finally {
@@ -181,9 +175,41 @@ function Dashboard() {
     }
   }, [handleUnauthorized]);
 
+  const loadSaleOptions = useCallback(async () => {
+    setIsSaleOptionsLoading(true);
+    try {
+      const [clientsData, plansData, productsData] = await Promise.all([
+        listClients(handleUnauthorized),
+        listMembershipPlans(handleUnauthorized),
+        listProducts(handleUnauthorized),
+      ]);
+      setClients(clientsData);
+      setPlans(plansData);
+      setProducts(productsData);
+      setSaleOptionsLoaded(true);
+    } catch (err) {
+      setSaleError(err instanceof Error ? err.message : "Error al cargar opciones de venta");
+    } finally {
+      setIsSaleOptionsLoading(false);
+    }
+  }, [handleUnauthorized]);
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  const openSaleSheet = () => {
+    setSaleForm({
+      ...EMPTY_SALE_FORM,
+      client: { ...EMPTY_SALE_CLIENT },
+    });
+    setSaleError(null);
+    setShowSaleSheet(true);
+
+    if (!saleOptionsLoaded && !isSaleOptionsLoading) {
+      loadSaleOptions();
+    }
+  };
 
   const resetSaleForm = () => {
     setSaleForm({
@@ -267,6 +293,7 @@ function Dashboard() {
 
       resetSaleForm();
       await loadDashboard();
+      loadSaleOptions();
     } catch (err) {
       setSaleError(err instanceof Error ? err.message : "Error al registrar venta");
     } finally {
@@ -335,7 +362,7 @@ function Dashboard() {
             if (!open) {
               resetSaleForm();
             } else {
-              setShowSaleSheet(true);
+              openSaleSheet();
             }
           }}
         >
@@ -348,6 +375,12 @@ function Dashboard() {
             </SheetHeader>
 
             <form onSubmit={handleSaleSubmit} className="grid gap-4 px-4 pb-4">
+              {isSaleOptionsLoading && (
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                  Cargando opciones de venta...
+                </div>
+              )}
+
               <div
                 className="grid grid-cols-2 rounded-lg border bg-muted/50 p-1"
                 role="group"
@@ -422,10 +455,15 @@ function Dashboard() {
                     onChange={(event) =>
                       setSaleForm({ ...saleForm, clientId: event.target.value })
                     }
+                    disabled={isSaleOptionsLoading}
                     required={saleForm.type === "membership"}
                   >
                     <option value="">
-                      {saleForm.type === "product" ? "Venta general" : "Seleccionar cliente"}
+                      {isSaleOptionsLoading
+                        ? "Cargando clientes..."
+                        : saleForm.type === "product"
+                          ? "Venta general"
+                          : "Seleccionar cliente"}
                     </option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
@@ -494,9 +532,12 @@ function Dashboard() {
                       onChange={(event) =>
                         handleMembershipPlanChange(event.target.value)
                       }
+                      disabled={isSaleOptionsLoading}
                       required
                     >
-                      <option value="">Seleccionar plan</option>
+                      <option value="">
+                        {isSaleOptionsLoading ? "Cargando planes..." : "Seleccionar plan"}
+                      </option>
                       {plans.map((plan) => (
                         <option key={plan.id} value={plan.id}>
                           {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
@@ -540,9 +581,12 @@ function Dashboard() {
                       onChange={(event) =>
                         setSaleForm({ ...saleForm, productId: event.target.value })
                       }
+                      disabled={isSaleOptionsLoading}
                       required
                     >
-                      <option value="">Seleccionar producto</option>
+                      <option value="">
+                        {isSaleOptionsLoading ? "Cargando productos..." : "Seleccionar producto"}
+                      </option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
                           {product.name} · Stock {product.stock} · {formatCurrency(product.price)}
@@ -577,7 +621,7 @@ function Dashboard() {
                 <Button type="button" variant="outline" onClick={resetSaleForm}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaleSubmitting}>
+                <Button type="submit" disabled={isSaleSubmitting || isSaleOptionsLoading}>
                   <ShoppingCart />
                   {isSaleSubmitting ? "Registrando..." : "Registrar venta"}
                 </Button>
@@ -712,7 +756,7 @@ function Dashboard() {
         aria-label="Nueva venta"
         title="Nueva venta"
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
-        onClick={() => setShowSaleSheet(true)}
+        onClick={openSaleSheet}
       >
         <ShoppingCart className="size-5" />
         <span className="hidden sm:inline">Nueva venta</span>

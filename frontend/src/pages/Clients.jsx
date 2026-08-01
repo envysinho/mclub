@@ -451,7 +451,7 @@ function Clients({ module = "clients" }) {
                 </button>
               </div>
               <Button
-                className="w-full sm:w-auto"
+                className="hidden sm:inline-flex"
                 onClick={() => {
                   resetClientForm();
                   setShowClientForm(true);
@@ -681,7 +681,7 @@ function Clients({ module = "clients" }) {
               </div>
               {canManageCatalog && (
               <Button
-                className="w-full sm:w-auto"
+                className="hidden sm:inline-flex"
                 onClick={() => {
                   resetPlanForm();
                   setShowPlanForm(true);
@@ -933,6 +933,36 @@ function Clients({ module = "clients" }) {
           </div>
         )}
       </PageCard>
+
+      {isClientsModule && canManageClients && (
+        <Button
+          type="button"
+          aria-label="Nuevo cliente"
+          title="Nuevo cliente"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:hidden"
+          onClick={() => {
+            resetClientForm();
+            setShowClientForm(true);
+          }}
+        >
+          <UserPlus className="size-5" />
+        </Button>
+      )}
+
+      {isMembershipsModule && canManageCatalog && (
+        <Button
+          type="button"
+          aria-label="Nuevo plan"
+          title="Nuevo plan"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:hidden"
+          onClick={() => {
+            resetPlanForm();
+            setShowPlanForm(true);
+          }}
+        >
+          <Plus className="size-5" />
+        </Button>
+      )}
     </div>
   );
 }
