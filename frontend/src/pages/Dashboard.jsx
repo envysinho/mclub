@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Package, ShoppingCart, Trash2, TrendingUp, Users } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
@@ -14,6 +14,15 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxCollection,
+  ComboboxItem,
+  ComboboxEmpty,
+} from "@/components/ui/combobox";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   assignMembership,
@@ -163,6 +172,47 @@ function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canDeleteMovements = user?.role === "SUDO";
+
+  const startDateRef = useRef(null);
+  const endDateRef = useRef(null);
+
+  const openDatePicker = (ref) => {
+    if (!ref?.current) return;
+    let el = ref.current;
+
+    // If ref is a wrapper component, try to find the native input inside
+    try {
+      if (el && el.querySelector) {
+        const found = el.querySelector('input[type="date"]');
+        if (found) el = found;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    if (!el) return;
+
+    if (typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+        return;
+      } catch (e) {
+        // ignore and fallback to focus
+      }
+    }
+
+    if (typeof el.focus === "function") {
+      try {
+        el.focus();
+      } catch (e) {}
+    }
+
+    try {
+      if (typeof el.click === "function") el.click();
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -531,45 +581,60 @@ function Dashboard() {
                 <div className="grid gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="salePlan">Plan de membresía</Label>
-                    <select
-                      id="salePlan"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                      value={saleForm.planId}
-                      onChange={(event) =>
-                        handleMembershipPlanChange(event.target.value)
+                    <Combobox
+                      items={plans}
+                      value={selectedPlan || null}
+                      onValueChange={(plan) => {
+                        handleMembershipPlanChange(plan ? String(plan.id) : "");
+                      }}
+                      itemToStringLabel={(plan) => `${plan.name} · ${plan.durationDays} días · ${formatCurrency(plan.price)}`}
+                      itemToStringValue={(plan) => String(plan.id)}
+                      isItemEqualToValue={(item, value) => item?.id === value?.id}
+                      filter={(plan, query) =>
+                        plan.name.toLowerCase().includes(query.toLowerCase()) ||
+                        String(plan.durationDays).includes(query) ||
+                        String(plan.price).includes(query)
                       }
-                      disabled={isSaleOptionsLoading}
-                      required
+                      aria-label="Seleccionar plan"
                     >
-                      <option value="">
-                        {isSaleOptionsLoading ? "Cargando planes..." : "Seleccionar plan"}
-                      </option>
-                      {plans.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
-                        </option>
-                      ))}
-                    </select>
+                      <ComboboxInput className="w-full" aria-label="Seleccionar plan" />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          <ComboboxEmpty>Sin planes</ComboboxEmpty>
+                          <ComboboxCollection>
+                            {(plan) => (
+                              <ComboboxItem key={plan.id} value={plan}>
+                                {plan.name} · {plan.durationDays} días · {formatCurrency(plan.price)}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxCollection>
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="saleStartDate">Inicio</Label>
                       <div className="relative">
-                        <div className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30">
+                        <div
+                          className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30 cursor-pointer"
+                          onClick={() => openDatePicker(startDateRef)}
+                        >
                           {saleForm.startDate ? (
                             formatDisplayDate(saleForm.startDate)
                           ) : (
                             <span className="text-muted-foreground">dd/mm/aaaa</span>
                           )}
                         </div>
-                        <Input
+                        <input
+                          ref={startDateRef}
                           id="saleStartDate"
                           type="date"
                           value={saleForm.startDate}
                           onChange={(event) =>
                             handleMembershipStartDateChange(event.target.value)
                           }
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 z-10 pointer-events-auto"
                           aria-label="Fecha de inicio"
                         />
                       </div>
@@ -577,21 +642,25 @@ function Dashboard() {
                     <div className="space-y-2">
                       <Label htmlFor="saleEndDate">Fin</Label>
                       <div className="relative">
-                        <div className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30">
+                        <div
+                          className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30 cursor-pointer"
+                          onClick={() => openDatePicker(endDateRef)}
+                        >
                           {saleForm.endDate ? (
                             formatDisplayDate(saleForm.endDate)
                           ) : (
                             <span className="text-muted-foreground">dd/mm/aaaa</span>
                           )}
                         </div>
-                        <Input
+                        <input
+                          ref={endDateRef}
                           id="saleEndDate"
                           type="date"
                           value={saleForm.endDate}
                           onChange={(event) =>
                             setSaleForm({ ...saleForm, endDate: event.target.value })
                           }
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 z-10 pointer-events-auto"
                           aria-label="Fecha de fin"
                         />
                       </div>
