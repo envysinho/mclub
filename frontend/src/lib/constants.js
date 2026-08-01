@@ -16,6 +16,34 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   ADJUSTMENT: "Ajuste",
 };
 
+export const PAYMENT_METHOD_LABELS = {
+  EFECTIVO: "Efectivo",
+  YAPE: "Yape",
+  MIXTO: "Mixto",
+};
+
+export function formatPaymentMethod(movement) {
+  const method = movement.paymentMethod;
+  if (!method) return "Sin método";
+
+  const label = PAYMENT_METHOD_LABELS[method] ?? method;
+
+  if (method === "MIXTO") {
+    const parts = [];
+    if (movement.yapeAmount != null) {
+      parts.push(`Yape ${formatCurrency(movement.yapeAmount)}`);
+    }
+    if (movement.cashAmount != null) {
+      parts.push(`Efectivo ${formatCurrency(movement.cashAmount)}`);
+    }
+    if (parts.length > 0) {
+      return `${label} · ${parts.join(" · ")}`;
+    }
+  }
+
+  return label;
+}
+
 export function formatCurrency(amount) {
   return new Intl.NumberFormat("es-PE", {
     style: "currency",

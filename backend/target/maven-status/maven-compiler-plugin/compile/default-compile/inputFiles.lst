@@ -45,6 +45,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/User.java
 /home/envy/gym/backend/src/main/java/com/example/gym/model/MembershipStatus.java
 /home/envy/gym/backend/src/main/java/com/example/gym/model/MovementType.java
+/home/envy/gym/backend/src/main/java/com/example/gym/model/PaymentMethod.java
 /home/envy/gym/backend/src/main/java/com/example/gym/model/Role.java
 /home/envy/gym/backend/src/main/java/com/example/gym/model/StockMovementType.java
 /home/envy/gym/backend/src/main/java/com/example/gym/repository/ClientMembershipRepository.java

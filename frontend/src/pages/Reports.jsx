@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getMonthlyReport } from "@/lib/api";
-import { formatCurrency, formatDate, MOVEMENT_TYPE_LABELS } from "@/lib/constants";
+import { formatCurrency, formatDate, formatPaymentMethod, MOVEMENT_TYPE_LABELS } from "@/lib/constants";
 import { buildMonthOptions, formatMonthValue } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
@@ -79,8 +79,8 @@ function ReportMovementMobileCard({ movement }) {
           <h3 className="break-words font-medium leading-snug">
             {movement.description}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {movement.clientName ?? "Sin cliente"}
+          <p className="break-words text-sm text-muted-foreground">
+            {movement.clientName ?? "Sin cliente"} · {formatPaymentMethod(movement)}
           </p>
         </div>
         <div className="shrink-0 text-right">
@@ -289,6 +289,7 @@ function Reports() {
                   <th className="py-3 pr-4 font-medium">Tipo</th>
                   <th className="py-3 pr-4 font-medium">Descripción</th>
                   <th className="py-3 pr-4 font-medium">Cliente</th>
+                  <th className="py-3 pr-4 font-medium">Pago</th>
                   <th className="py-3 pr-4 font-medium text-right">Cantidad</th>
                   <th className="py-3 pr-4 font-medium text-right">Monto</th>
                 </tr>
@@ -306,6 +307,9 @@ function Reports() {
                     </td>
                     <td className="py-3 pr-4">{movement.description}</td>
                     <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                    <td className="py-3 pr-4 whitespace-nowrap">
+                      {formatPaymentMethod(movement)}
+                    </td>
                     <td className="py-3 pr-4 text-right">{movement.quantity}</td>
                     <td className="py-3 pr-4 text-right font-medium">
                       {formatCurrency(movement.amount)}

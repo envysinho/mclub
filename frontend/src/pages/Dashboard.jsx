@@ -37,8 +37,10 @@ import {
 import {
   formatCurrency,
   formatDate,
+  formatPaymentMethod,
   fullName,
   MOVEMENT_TYPE_LABELS,
+  PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +61,9 @@ const EMPTY_SALE_FORM = {
   quantity: "1",
   startDate: "",
   endDate: "",
+  paymentMethod: "EFECTIVO",
+  yapeAmount: "",
+  cashAmount: "",
   client: EMPTY_SALE_CLIENT,
 };
 
@@ -126,8 +131,8 @@ function MovementMobileCard({ movement, canDeleteMovements, onDelete }) {
           <h3 className="break-words font-medium leading-snug">
             {movement.description}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {movement.clientName ?? "Sin cliente"}
+          <p className="break-words text-sm text-muted-foreground">
+            {movement.clientName ?? "Sin cliente"} · {formatPaymentMethod(movement)}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -301,6 +306,15 @@ function Dashboard() {
         ? selectedProduct.price * Number(saleForm.quantity || 0)
         : null;
 
+  const paymentMethodOptions = Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  }));
+  const selectedPaymentMethodOption =
+    paymentMethodOptions.find((option) => option.value === saleForm.paymentMethod) ??
+    paymentMethodOptions[0] ??
+    null;
+
   const handleSaleSubmit = async (event) => {
     event.preventDefault();
     setSaleError(null);
@@ -308,6 +322,26 @@ function Dashboard() {
 
     try {
       let clientId = saleForm.clientId ? Number(saleForm.clientId) : null;
+
+      let mixedPayment = {};
+      if (saleForm.paymentMethod === "MIXTO") {
+        const yape = Number(saleForm.yapeAmount);
+        const cash = Number(saleForm.cashAmount);
+        if (
+          saleForm.yapeAmount === "" ||
+          saleForm.cashAmount === "" ||
+          !Number.isFinite(yape) ||
+          !Number.isFinite(cash) ||
+          yape < 0 ||
+          cash < 0
+        ) {
+          throw new Error("Ingresa el monto en Yape y en efectivo");
+        }
+        if (yape + cash !== saleAmount) {
+          throw new Error("La suma de Yape y efectivo debe ser igual al total");
+        }
+        mixedPayment = { yapeAmount: yape, cashAmount: cash };
+      }
 
       if (saleForm.clientMode === "new") {
         const createdClient = await createClient(
@@ -333,6 +367,8 @@ function Dashboard() {
             planId: Number(saleForm.planId),
             startDate: saleForm.startDate || null,
             endDate: saleForm.endDate || null,
+            paymentMethod: saleForm.paymentMethod,
+            ...mixedPayment,
           },
           handleUnauthorized
         );
@@ -342,6 +378,8 @@ function Dashboard() {
             productId: Number(saleForm.productId),
             quantity: Number(saleForm.quantity),
             clientId,
+            paymentMethod: saleForm.paymentMethod,
+            ...mixedPayment,
           },
           handleUnauthorized
         );
@@ -709,6 +747,78 @@ function Dashboard() {
                 </div>
               )}
 
+              <div className="space-y-2">
+                <Label htmlFor="salePaymentMethod">Método de pago</Label>
+                <Combobox
+                  items={paymentMethodOptions}
+                  value={selectedPaymentMethodOption}
+                  onValueChange={(option) => {
+                    setSaleForm({
+                      ...saleForm,
+                      paymentMethod: option ? option.value : "EFECTIVO",
+                    });
+                  }}
+                  itemToStringLabel={(option) => option.label}
+                  itemToStringValue={(option) => option.value}
+                  isItemEqualToValue={(item, value) => item?.value === value?.value}
+                  aria-label="Método de pago"
+                >
+                  <ComboboxInput
+                    id="salePaymentMethod"
+                    className="w-full"
+                    aria-label="Método de pago"
+                    readOnly
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      <ComboboxEmpty>Sin métodos</ComboboxEmpty>
+                      <ComboboxCollection>
+                        {(option) => (
+                          <ComboboxItem key={option.value} value={option}>
+                            {option.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxCollection>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </div>
+
+              {saleForm.paymentMethod === "MIXTO" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="saleYapeAmount">Monto en Yape</Label>
+                    <Input
+                      id="saleYapeAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={saleForm.yapeAmount}
+                      onChange={(event) =>
+                        setSaleForm({ ...saleForm, yapeAmount: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="saleCashAmount">Monto en efectivo</Label>
+                    <Input
+                      id="saleCashAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={saleForm.cashAmount}
+                      onChange={(event) =>
+                        setSaleForm({ ...saleForm, cashAmount: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between rounded-lg border bg-background/50 px-3 py-2">
                 <span className="text-sm text-muted-foreground">Total</span>
                 <strong>{formatCurrency(saleAmount ?? 0)}</strong>
@@ -797,6 +907,7 @@ function Dashboard() {
                   <th className="pb-3 pr-4 font-medium">Tipo</th>
                   <th className="pb-3 pr-4 font-medium">Descripción</th>
                   <th className="pb-3 pr-4 font-medium">Cliente</th>
+                  <th className="pb-3 pr-4 font-medium">Pago</th>
                   <th className="pb-3 font-medium text-right">Monto</th>
                   {canDeleteMovements && (
                     <th className="pb-3 pl-4 font-medium text-right">Acciones</th>
@@ -816,6 +927,9 @@ function Dashboard() {
                     </td>
                     <td className="py-3 pr-4">{movement.description}</td>
                     <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                    <td className="py-3 pr-4 whitespace-nowrap">
+                      {formatPaymentMethod(movement)}
+                    </td>
                     <td className="py-3 text-right font-medium">
                       {formatCurrency(movement.amount)}
                     </td>

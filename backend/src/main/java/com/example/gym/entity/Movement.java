@@ -6,6 +6,7 @@ import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 
 import com.example.gym.model.MovementType;
+import com.example.gym.model.PaymentMethod;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,6 +47,16 @@ public class Movement {
 
     @Column(name = "reference_id")
     private Long referenceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method")
+    private PaymentMethod paymentMethod;
+
+    @Column(name = "yape_amount", precision = 10, scale = 2)
+    private BigDecimal yapeAmount;
+
+    @Column(name = "cash_amount", precision = 10, scale = 2)
+    private BigDecimal cashAmount;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -101,6 +112,30 @@ public class Movement {
 
     public void setReferenceId(Long referenceId) {
         this.referenceId = referenceId;
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public BigDecimal getYapeAmount() {
+        return yapeAmount;
+    }
+
+    public void setYapeAmount(BigDecimal yapeAmount) {
+        this.yapeAmount = yapeAmount;
+    }
+
+    public BigDecimal getCashAmount() {
+        return cashAmount;
+    }
+
+    public void setCashAmount(BigDecimal cashAmount) {
+        this.cashAmount = cashAmount;
     }
 
     public Instant getCreatedAt() {

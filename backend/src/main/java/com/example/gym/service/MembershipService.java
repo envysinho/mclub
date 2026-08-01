@@ -19,6 +19,7 @@ import com.example.gym.entity.MembershipPlan;
 import com.example.gym.entity.Movement;
 import com.example.gym.model.MembershipStatus;
 import com.example.gym.model.MovementType;
+import com.example.gym.model.PaymentMethod;
 import com.example.gym.repository.ClientMembershipRepository;
 import com.example.gym.repository.ClientRepository;
 import com.example.gym.repository.MembershipPlanRepository;
@@ -110,9 +111,42 @@ public class MembershipService {
         movement.setQuantity(1);
         movement.setClient(client);
         movement.setReferenceId(saved.getId());
+        movement.setPaymentMethod(request.paymentMethod());
+        setMixedPaymentAmounts(movement, plan.getPrice(), request.paymentMethod(), request.yapeAmount(), request.cashAmount());
         movementRepository.save(movement);
 
         return saved;
+    }
+
+    private void setMixedPaymentAmounts(
+            Movement movement,
+            BigDecimal total,
+            PaymentMethod paymentMethod,
+            BigDecimal yapeAmount,
+            BigDecimal cashAmount) {
+        if (paymentMethod != PaymentMethod.MIXTO) {
+            return;
+        }
+
+        if (yapeAmount == null || cashAmount == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Para pago mixto ingresa el monto en Yape y en efectivo");
+        }
+
+        if (yapeAmount.compareTo(BigDecimal.ZERO) < 0 || cashAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Los montos de pago no pueden ser negativos");
+        }
+
+        BigDecimal sum = yapeAmount.add(cashAmount);
+        if (sum.compareTo(total) != 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La suma de Yape y efectivo debe ser igual al total (" + total + ")");
+        }
+
+        movement.setYapeAmount(yapeAmount);
+        movement.setCashAmount(cashAmount);
     }
 
     MembershipPlan getPlanOrThrow(Long id) {
