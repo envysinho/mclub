@@ -60,6 +60,12 @@ function formatDateInput(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDisplayDate(dateValue) {
+  if (!dateValue) return "";
+  const [year, month, day] = dateValue.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function addDaysToInputDate(dateValue, days) {
   const [year, month, day] = dateValue.split("-").map(Number);
   const date = new Date(year, month - 1, day);
@@ -548,25 +554,47 @@ function Dashboard() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="saleStartDate">Inicio</Label>
-                      <Input
-                        id="saleStartDate"
-                        type="date"
-                        value={saleForm.startDate}
-                        onChange={(event) =>
-                          handleMembershipStartDateChange(event.target.value)
-                        }
-                      />
+                      <div className="relative">
+                        <div className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30">
+                          {saleForm.startDate ? (
+                            formatDisplayDate(saleForm.startDate)
+                          ) : (
+                            <span className="text-muted-foreground">dd/mm/aaaa</span>
+                          )}
+                        </div>
+                        <Input
+                          id="saleStartDate"
+                          type="date"
+                          value={saleForm.startDate}
+                          onChange={(event) =>
+                            handleMembershipStartDateChange(event.target.value)
+                          }
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          aria-label="Fecha de inicio"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="saleEndDate">Fin</Label>
-                      <Input
-                        id="saleEndDate"
-                        type="date"
-                        value={saleForm.endDate}
-                        onChange={(event) =>
-                          setSaleForm({ ...saleForm, endDate: event.target.value })
-                        }
-                      />
+                      <div className="relative">
+                        <div className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm dark:bg-input/30">
+                          {saleForm.endDate ? (
+                            formatDisplayDate(saleForm.endDate)
+                          ) : (
+                            <span className="text-muted-foreground">dd/mm/aaaa</span>
+                          )}
+                        </div>
+                        <Input
+                          id="saleEndDate"
+                          type="date"
+                          value={saleForm.endDate}
+                          onChange={(event) =>
+                            setSaleForm({ ...saleForm, endDate: event.target.value })
+                          }
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          aria-label="Fecha de fin"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
