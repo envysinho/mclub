@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
+import Inventory from "@/pages/Inventory";
 import Products from "@/pages/Products";
 import Users from "@/pages/Users";
 import Login from "@/pages/Login";
@@ -28,6 +29,10 @@ const PAGE_META = {
     title: "Productos",
     description: "Administra el catálogo de productos del gimnasio.",
   },
+  inventory: {
+    title: "Inventario",
+    description: "Revisa stock mensual, entradas, ventas y ajustes.",
+  },
   users: {
     title: "Usuarios",
     description: "Administra accesos, roles y estado de los usuarios.",
@@ -47,6 +52,8 @@ function AppContent() {
         return <Clients key="memberships" module="memberships" />;
       case "products":
         return <Products />;
+      case "inventory":
+        return <Inventory />;
       case "users":
         return user?.role === "SUDO" ? <Users /> : <Dashboard />;
       case "dashboard":

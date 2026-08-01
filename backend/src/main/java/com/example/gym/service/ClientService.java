@@ -54,7 +54,7 @@ public class ClientService {
     public ClientResponse create(CreateClientRequest request) {
         Client client = new Client();
         applyFields(client, request.firstName(), request.lastName(),
-                request.email(), request.phone(), request.documentId());
+                request.phone(), request.documentId());
         client.setActive(request.active() == null || request.active());
         return toResponse(clientRepository.save(client));
     }
@@ -63,7 +63,7 @@ public class ClientService {
     public ClientResponse update(Long id, UpdateClientRequest request) {
         Client client = getClientOrThrow(id);
         applyFields(client, request.firstName(), request.lastName(),
-                request.email(), request.phone(), request.documentId());
+                request.phone(), request.documentId());
         if (request.active() != null) {
             client.setActive(request.active());
         }
@@ -93,12 +93,10 @@ public class ClientService {
             Client client,
             String firstName,
             String lastName,
-            String email,
             String phone,
             String documentId) {
         client.setFirstName(firstName.trim());
         client.setLastName(lastName.trim());
-        client.setEmail(trimToNull(email));
         client.setPhone(trimToNull(phone));
         client.setDocumentId(trimToNull(documentId));
     }

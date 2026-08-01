@@ -157,6 +157,27 @@ export async function sellProduct(data, onUnauthorized) {
   );
 }
 
+export async function deleteMovement(id, confirmationPassword, onUnauthorized) {
+  return apiFetch(
+    `/api/movements/${id}`,
+    { method: "DELETE", headers: { "X-Confirm-Password": confirmationPassword } },
+    onUnauthorized
+  );
+}
+
+export async function getInventory(month, onUnauthorized) {
+  const search = month ? `?month=${encodeURIComponent(month)}` : "";
+  return apiFetch(`/api/inventory${search}`, {}, onUnauthorized);
+}
+
+export async function createStockMovement(data, onUnauthorized) {
+  return apiFetch(
+    "/api/inventory/movements",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
 export async function listUsers(onUnauthorized) {
   return apiFetch("/api/users", {}, onUnauthorized);
 }

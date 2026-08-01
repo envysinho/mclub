@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { Activity, Package, ShoppingCart, Trash2, TrendingUp, Users } from "lucide-react";
+import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   assignMembership,
   createClient,
+  deleteMovement,
   getDashboard,
   listClients,
   listMembershipPlans,
@@ -34,7 +36,6 @@ import { cn } from "@/lib/utils";
 const EMPTY_SALE_CLIENT = {
   firstName: "",
   lastName: "",
-  email: "",
   phone: "",
   documentId: "",
   active: true,
@@ -68,7 +69,7 @@ function StatCard({ icon: Icon, label, value, hint }) {
 }
 
 function Dashboard() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [data, setData] = useState(null);
   const [clients, setClients] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -79,6 +80,11 @@ function Dashboard() {
   const [saleForm, setSaleForm] = useState(EMPTY_SALE_FORM);
   const [saleError, setSaleError] = useState(null);
   const [isSaleSubmitting, setIsSaleSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const canDeleteMovements = user?.role === "SUDO";
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -156,7 +162,6 @@ function Dashboard() {
           {
             firstName: saleForm.client.firstName.trim(),
             lastName: saleForm.client.lastName.trim(),
-            email: saleForm.client.email.trim() || null,
             phone: saleForm.client.phone.trim() || null,
             documentId: "",
             active: true,
@@ -197,8 +202,37 @@ function Dashboard() {
     }
   };
 
+  const handleDeleteMovement = async (movement, confirmationPassword) => {
+    if (!movement) return;
+
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await deleteMovement(movement.id, confirmationPassword, handleUnauthorized);
+      setDeleteTarget(null);
+      await loadDashboard();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Error al eliminar movimiento");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      <DeleteConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar movimiento"
+        description={`Confirma tu contraseña para eliminar "${deleteTarget?.description ?? "este movimiento"}".`}
+        error={deleteError}
+        isSubmitting={isDeleting}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
+        onConfirm={(password) => handleDeleteMovement(deleteTarget, password)}
+      />
+
       <PageCard>
         <Sheet
           open={showSaleSheet}
@@ -343,20 +377,6 @@ function Dashboard() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="saleEmail">Correo</Label>
-                    <Input
-                      id="saleEmail"
-                      type="email"
-                      value={saleForm.client.email}
-                      onChange={(event) =>
-                        setSaleForm({
-                          ...saleForm,
-                          client: { ...saleForm.client, email: event.target.value },
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               )}
 
@@ -484,7 +504,7 @@ function Dashboard() {
           </div>
         ) : data?.recentMovements?.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-3 pr-4 font-medium">Fecha</th>
@@ -492,6 +512,9 @@ function Dashboard() {
                   <th className="pb-3 pr-4 font-medium">Descripción</th>
                   <th className="pb-3 pr-4 font-medium">Cliente</th>
                   <th className="pb-3 font-medium text-right">Monto</th>
+                  {canDeleteMovements && (
+                    <th className="pb-3 pl-4 font-medium text-right">Acciones</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -510,6 +533,24 @@ function Dashboard() {
                     <td className="py-3 text-right font-medium">
                       {formatCurrency(movement.amount)}
                     </td>
+                    {canDeleteMovements && (
+                      <td className="py-3 pl-4 text-right">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                          aria-label={`Eliminar ${movement.description}`}
+                          title="Eliminar movimiento"
+                          onClick={() => {
+                            setDeleteTarget(movement);
+                            setDeleteError(null);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

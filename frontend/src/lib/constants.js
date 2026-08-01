@@ -10,6 +10,12 @@ export const MOVEMENT_TYPE_LABELS = {
   PRODUCT_SALE: "Venta de producto",
 };
 
+export const STOCK_MOVEMENT_TYPE_LABELS = {
+  PURCHASE: "Entrada",
+  SALE: "Venta",
+  ADJUSTMENT: "Ajuste",
+};
+
 export function formatCurrency(amount) {
   return new Intl.NumberFormat("es-PE", {
     style: "currency",

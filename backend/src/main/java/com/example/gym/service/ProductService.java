@@ -25,14 +25,17 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final MovementRepository movementRepository;
     private final ClientService clientService;
+    private final InventoryService inventoryService;
 
     public ProductService(
             ProductRepository productRepository,
             MovementRepository movementRepository,
-            ClientService clientService) {
+            ClientService clientService,
+            InventoryService inventoryService) {
         this.productRepository = productRepository;
         this.movementRepository = movementRepository;
         this.clientService = clientService;
+        this.inventoryService = inventoryService;
     }
 
     @Transactional(readOnly = true)
@@ -46,14 +49,19 @@ public class ProductService {
     public ProductResponse create(CreateProductRequest request) {
         Product product = new Product();
         applyFields(product, request.name(), request.price(), request.stock(), request.description());
-        return ProductResponse.from(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        inventoryService.recordInitialStock(saved, request.stock());
+        return ProductResponse.from(saved);
     }
 
     @Transactional
     public ProductResponse update(Long id, UpdateProductRequest request) {
         Product product = getProductOrThrow(id);
+        int stockDelta = request.stock() - product.getStock();
         applyFields(product, request.name(), request.price(), request.stock(), request.description());
-        return ProductResponse.from(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        inventoryService.recordProductStockAdjustment(saved, stockDelta);
+        return ProductResponse.from(saved);
     }
 
     @Transactional
@@ -77,6 +85,7 @@ public class ProductService {
 
         product.setStock(product.getStock() - request.quantity());
         productRepository.save(product);
+        inventoryService.recordSale(product, request.quantity());
 
         BigDecimal totalAmount = product.getPrice().multiply(BigDecimal.valueOf(request.quantity()));
 

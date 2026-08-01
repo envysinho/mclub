@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 const EMPTY_CLIENT = {
   firstName: "",
   lastName: "",
-  email: "",
   phone: "",
   documentId: "",
   active: true,
@@ -163,7 +162,6 @@ function Clients({ module = "clients" }) {
     setClientForm({
       firstName: client.firstName,
       lastName: client.lastName,
-      email: client.email ?? "",
       phone: client.phone ?? "",
       documentId: client.documentId ?? "",
       active: client.active !== false,
@@ -189,11 +187,19 @@ function Clients({ module = "clients" }) {
     setFormError(null);
     setIsSubmitting(true);
 
+    const payload = {
+      ...clientForm,
+      firstName: clientForm.firstName.trim(),
+      lastName: clientForm.lastName.trim(),
+      phone: clientForm.phone.trim() || null,
+      documentId: clientForm.documentId.trim() || "",
+    };
+
     try {
       if (editingClient) {
-        await updateClient(editingClient.id, clientForm, handleUnauthorized);
+        await updateClient(editingClient.id, payload, handleUnauthorized);
       } else {
-        await createClient(clientForm, handleUnauthorized);
+        await createClient(payload, handleUnauthorized);
       }
       resetClientForm();
       await loadData();
@@ -261,7 +267,6 @@ function Clients({ module = "clients" }) {
         {
           firstName: client.firstName,
           lastName: client.lastName,
-          email: client.email ?? "",
           phone: client.phone ?? "",
           documentId: client.documentId ?? "",
           active: nextActive,
@@ -474,23 +479,25 @@ function Clients({ module = "clients" }) {
                 onSubmit={handleClientSubmit}
                 className="grid gap-4 px-4 pb-4"
               >
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Nombres</Label>
-                  <Input
-                    id="firstName"
-                    value={clientForm.firstName}
-                    onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Apellidos</Label>
-                  <Input
-                    id="lastName"
-                    value={clientForm.lastName}
-                    onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
-                    required
-                  />
+                <div className="grid gap-4 rounded-lg border bg-background/50 p-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Nombres</Label>
+                    <Input
+                      id="firstName"
+                      value={clientForm.firstName}
+                      onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Apellidos</Label>
+                    <Input
+                      id="lastName"
+                      value={clientForm.lastName}
+                      onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Teléfono</Label>
@@ -498,15 +505,6 @@ function Clients({ module = "clients" }) {
                     id="phone"
                     value={clientForm.phone}
                     onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Correo</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={clientForm.email}
-                    onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/50 px-3 py-2">
@@ -575,9 +573,6 @@ function Clients({ module = "clients" }) {
                         <h3 className="font-semibold">{fullName(client)}</h3>
                         <p className="text-sm text-muted-foreground break-words">
                           {client.phone || "Sin teléfono"}
-                        </p>
-                        <p className="text-sm text-muted-foreground break-all">
-                          {client.email || "Sin correo"}
                         </p>
                       </div>
                       {renderClientStatusBadge(client)}

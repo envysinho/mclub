@@ -31,9 +31,6 @@ public class Client {
     private String lastName;
 
     @Column
-    private String email;
-
-    @Column
     private String phone;
 
     @Column(name = "document_id")
@@ -71,14 +68,6 @@ public class Client {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     public String getPhone() {
