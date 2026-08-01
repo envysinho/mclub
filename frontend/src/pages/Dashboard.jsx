@@ -634,8 +634,9 @@ function Dashboard() {
                           onChange={(event) =>
                             handleMembershipStartDateChange(event.target.value)
                           }
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 z-10 pointer-events-auto"
+                          className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
                           aria-label="Fecha de inicio"
+                          tabIndex={-1}
                         />
                       </div>
                     </div>
@@ -660,8 +661,9 @@ function Dashboard() {
                           onChange={(event) =>
                             setSaleForm({ ...saleForm, endDate: event.target.value })
                           }
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 z-10 pointer-events-auto"
+                          className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
                           aria-label="Fecha de fin"
+                          tabIndex={-1}
                         />
                       </div>
                     </div>
