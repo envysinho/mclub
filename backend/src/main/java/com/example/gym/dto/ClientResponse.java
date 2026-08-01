@@ -1,10 +1,10 @@
 package com.example.gym.dto;
 
 import java.time.Instant;
+import java.time.ZoneId;
 
 import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
-import com.example.gym.model.MembershipStatus;
 
 public record ClientResponse(
         Long id,
@@ -21,8 +21,10 @@ public record ClientResponse(
                 : new ActiveMembershipResponse(
                         activeMembership.getId(),
                         activeMembership.getPlan().getName(),
-                        activeMembership.getStartDate(),
-                        activeMembership.getEndDate(),
+                        // start at start of day in system zone
+                        activeMembership.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                        // end at 23:59 of the end date in system zone
+                        activeMembership.getEndDate().atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant(),
                         activeMembership.getStatus());
 
         return new ClientResponse(
