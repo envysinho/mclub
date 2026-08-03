@@ -14,6 +14,7 @@ public record ClientResponse(
         String documentId,
         boolean active,
         ActiveMembershipResponse activeMembership,
+        String createdByName,
         Instant createdAt) {
 
     public static ClientResponse from(Client client, ClientMembership activeMembership) {
@@ -35,6 +36,7 @@ public record ClientResponse(
                 client.getDocumentId(),
                 client.isActive(),
                 membershipResponse,
+                client.getCreatedBy() == null ? null : client.getCreatedBy().getName(),
                 client.getCreatedAt());
     }
 }

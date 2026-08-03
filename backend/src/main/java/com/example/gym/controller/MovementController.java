@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gym.dto.MovementResponse;
 import com.example.gym.dto.ProductSaleRequest;
+import com.example.gym.security.UserPrincipal;
 import com.example.gym.service.DeleteConfirmationService;
 import com.example.gym.service.MovementService;
 import com.example.gym.service.ProductService;
@@ -41,14 +42,16 @@ public class MovementController {
     }
 
     @GetMapping
-    public List<MovementResponse> listMovements(@RequestParam(defaultValue = "20") int limit) {
-        return movementService.findRecent(limit);
+    public List<MovementResponse> listMovements(
+            @RequestParam(defaultValue = "20") int limit,
+            Authentication authentication) {
+        return movementService.findRecent(limit, authentication);
     }
 
     @PostMapping("/product-sale")
     @ResponseStatus(HttpStatus.CREATED)
-    public MovementResponse sellProduct(@Valid @RequestBody ProductSaleRequest request) {
-        return MovementResponse.from(productService.sell(request));
+    public MovementResponse sellProduct(@Valid @RequestBody ProductSaleRequest request, Authentication authentication) {
+        return MovementResponse.from(productService.sell(request, authenticatedUser(authentication)));
     }
 
     @DeleteMapping("/{id}")
@@ -59,5 +62,12 @@ public class MovementController {
             Authentication authentication) {
         deleteConfirmationService.verify(authentication, confirmationPassword);
         movementService.delete(id);
+    }
+
+    private com.example.gym.entity.User authenticatedUser(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUser();
+        }
+        return null;
     }
 }

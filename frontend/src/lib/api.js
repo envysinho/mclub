@@ -175,6 +175,32 @@ export async function getMonthlyReport(month, onUnauthorized) {
   return apiFetch(`/api/reports/monthly${search}`, {}, onUnauthorized);
 }
 
+export async function getDailyReport(date, onUnauthorized) {
+  const search = date ? `?date=${encodeURIComponent(date)}` : "";
+  return apiFetch(`/api/reports/daily${search}`, {}, onUnauthorized);
+}
+
+export async function getCashRegister(date, onUnauthorized) {
+  const search = date ? `?date=${encodeURIComponent(date)}` : "";
+  return apiFetch(`/api/cash-register${search}`, {}, onUnauthorized);
+}
+
+export async function saveCashRegister(data, onUnauthorized) {
+  return apiFetch(
+    "/api/cash-register",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
+export async function createExpense(data, onUnauthorized) {
+  return apiFetch(
+    "/api/expenses",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
 export async function createStockMovement(data, onUnauthorized) {
   return apiFetch(
     "/api/inventory/movements",

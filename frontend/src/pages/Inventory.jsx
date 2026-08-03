@@ -31,7 +31,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { createStockMovement, getInventory } from "@/lib/api";
-import { formatDate, STOCK_MOVEMENT_TYPE_LABELS } from "@/lib/constants";
+import {
+  formatCurrency,
+  formatDate,
+  PAYMENT_METHOD_LABELS,
+  STOCK_MOVEMENT_TYPE_LABELS,
+} from "@/lib/constants";
 import { buildMonthOptions, formatMonthValue } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
@@ -39,8 +44,15 @@ const EMPTY_MOVEMENT = {
   productId: "",
   type: "PURCHASE",
   quantity: "",
+  purchaseAmount: "",
+  paymentMethod: "EFECTIVO",
+  yapeAmount: "",
+  cashAmount: "",
+  paidFromCashRegister: true,
   note: "",
 };
+
+const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
 
 function signedQuantity(value) {
   if (value > 0) return `+${value}`;
@@ -69,6 +81,7 @@ function InventoryProductMobileCard({ product, renderStockBadge }) {
   const metrics = [
     ["Inicial", product.openingStock, "default"],
     ["Entradas", product.entries, "positive"],
+    ["Costo entradas", formatCurrency(product.stockPurchaseExpenseAmount), "expense"],
     ["Ventas", product.sales, "default"],
     ["Ajustes", signedQuantity(product.adjustments), "default"],
     ["Esperado", product.expectedStock, "default"],
@@ -94,6 +107,7 @@ function InventoryProductMobileCard({ product, renderStockBadge }) {
               "rounded-lg border bg-muted/30 px-3 py-2",
               tone === "strong" && "border-primary/20 bg-primary/5",
               tone === "positive" && "border-emerald-500/20 bg-emerald-500/5",
+              tone === "expense" && "border-destructive/20 bg-destructive/5",
               tone === "warning" && "border-yellow-500/30 bg-yellow-500/10"
             )}
           >
@@ -127,6 +141,13 @@ function StockMovementMobileCard({ movement }) {
           <p className="break-words text-sm text-muted-foreground">
             {movement.note ?? "Sin nota"}
           </p>
+          {movement.expenseAmount != null && (
+            <p className="text-xs text-muted-foreground">
+              Egreso {formatCurrency(movement.expenseAmount)} ·{" "}
+              {PAYMENT_METHOD_LABELS[movement.expensePaymentMethod] ?? movement.expensePaymentMethod}
+              {movement.expensePaidFromCashRegister ? " · Sale de caja" : " · Fuera de caja"}
+            </p>
+          )}
         </div>
         <strong
           className={cn(
@@ -179,7 +200,11 @@ function Inventory() {
 
   const totals = useMemo(() => {
     const products = inventory?.products ?? [];
-    return products.reduce(
+    const purchaseExpenses = products.reduce(
+      (total, product) => total + Number(product.stockPurchaseExpenseAmount ?? 0),
+      0
+    );
+    const stockTotals = products.reduce(
       (acc, product) => ({
         entries: acc.entries + product.entries,
         sales: acc.sales + product.sales,
@@ -188,6 +213,7 @@ function Inventory() {
       }),
       { entries: 0, sales: 0, adjustments: 0, currentStock: 0 }
     );
+    return { ...stockTotals, purchaseExpenses };
   }, [inventory]);
 
   const monthOptions = useMemo(buildMonthOptions, []);
@@ -208,11 +234,28 @@ function Inventory() {
     setIsSubmitting(true);
 
     try {
+      if (movementForm.type === "PURCHASE" && Number(movementForm.purchaseAmount || 0) <= 0) {
+        throw new Error("Ingresa el costo total de la entrada");
+      }
+
       await createStockMovement(
         {
           productId: Number(movementForm.productId),
           type: movementForm.type,
           quantity: Number(movementForm.quantity),
+          purchaseAmount:
+            movementForm.type === "PURCHASE" ? Number(movementForm.purchaseAmount) : null,
+          paymentMethod: movementForm.type === "PURCHASE" ? movementForm.paymentMethod : null,
+          yapeAmount:
+            movementForm.type === "PURCHASE" && movementForm.paymentMethod === "MIXTO"
+              ? Number(movementForm.yapeAmount || 0)
+              : null,
+          cashAmount:
+            movementForm.type === "PURCHASE" && movementForm.paymentMethod === "MIXTO"
+              ? Number(movementForm.cashAmount || 0)
+              : null,
+          paidFromCashRegister:
+            movementForm.type === "PURCHASE" ? movementForm.paidFromCashRegister : false,
           note: movementForm.note.trim() || null,
         },
         handleUnauthorized
@@ -295,6 +338,19 @@ function Inventory() {
             </ComboboxContent>
           </Combobox>
 
+          {canManageInventory && (
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                resetMovementForm();
+                setShowMovementForm(true);
+              }}
+            >
+              <PackagePlus />
+              Entrada / ajuste
+            </Button>
+          )}
         </div>
 
         {canManageInventory && (
@@ -311,7 +367,7 @@ function Inventory() {
             <SheetContent className="w-full overflow-y-auto sm:max-w-md">
               <SheetHeader className="border-b pr-12">
                 <SheetTitle>Movimiento de stock</SheetTitle>
-                <SheetDescription>Registra entrada o ajuste de inventario.</SheetDescription>
+                <SheetDescription>Registra entrada, costo de compra o ajuste de inventario.</SheetDescription>
               </SheetHeader>
 
               <form onSubmit={handleMovementSubmit} className="grid gap-4 px-4 pb-4">
@@ -330,7 +386,16 @@ function Inventory() {
                   <button
                     type="button"
                     className={movementTypeButtonClass("ADJUSTMENT")}
-                    onClick={() => setMovementForm({ ...movementForm, type: "ADJUSTMENT" })}
+                    onClick={() =>
+                      setMovementForm({
+                        ...movementForm,
+                        type: "ADJUSTMENT",
+                        purchaseAmount: "",
+                        yapeAmount: "",
+                        cashAmount: "",
+                        paidFromCashRegister: true,
+                      })
+                    }
                   >
                     Ajuste
                   </button>
@@ -372,6 +437,99 @@ function Inventory() {
                   />
                 </div>
 
+                {movementForm.type === "PURCHASE" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="purchaseAmount">Costo total del egreso</Label>
+                      <Input
+                        id="purchaseAmount"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={movementForm.purchaseAmount}
+                        onChange={(event) =>
+                          setMovementForm({ ...movementForm, purchaseAmount: event.target.value })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="purchasePaymentMethod">Medio de pago</Label>
+                      <select
+                        id="purchasePaymentMethod"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                        value={movementForm.paymentMethod}
+                        onChange={(event) =>
+                          setMovementForm({
+                            ...movementForm,
+                            paymentMethod: event.target.value,
+                            yapeAmount: "",
+                            cashAmount: "",
+                          })
+                        }
+                      >
+                        {PAYMENT_METHOD_OPTIONS.map((method) => (
+                          <option key={method} value={method}>
+                            {PAYMENT_METHOD_LABELS[method]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {movementForm.paymentMethod === "MIXTO" && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="purchaseYapeAmount">Yape</Label>
+                          <Input
+                            id="purchaseYapeAmount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={movementForm.yapeAmount}
+                            onChange={(event) =>
+                              setMovementForm({ ...movementForm, yapeAmount: event.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="purchaseCashAmount">Efectivo</Label>
+                          <Input
+                            id="purchaseCashAmount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={movementForm.cashAmount}
+                            onChange={(event) =>
+                              setMovementForm({ ...movementForm, cashAmount: event.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="flex items-start gap-3 rounded-lg border bg-muted/30 px-3 py-3 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={movementForm.paidFromCashRegister}
+                        onChange={(event) =>
+                          setMovementForm({
+                            ...movementForm,
+                            paidFromCashRegister: event.target.checked,
+                          })
+                        }
+                      />
+                      <span>
+                        <span className="block font-medium">Sale de caja</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Descuenta esta compra del cierre esperado del día.
+                        </span>
+                      </span>
+                    </label>
+                  </>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="inventoryNote">Nota</Label>
                   <Input
@@ -411,6 +569,7 @@ function Inventory() {
               icon={TrendingUp}
               label="Entradas del mes"
               value={totals.entries}
+              hint={formatCurrency(totals.purchaseExpenses)}
             />
             <InventoryStatCard
               icon={TrendingDown}
@@ -450,12 +609,13 @@ function Inventory() {
               ))}
             </div>
             <div className="hidden overflow-x-auto rounded-xl border md:block">
-              <table className="w-full min-w-[860px] text-sm">
+              <table className="w-full min-w-[940px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-3 pl-4 pr-4 font-medium">Producto</th>
                   <th className="py-3 pr-4 font-medium text-right">Inicial</th>
                   <th className="py-3 pr-4 font-medium text-right">Entradas</th>
+                  <th className="py-3 pr-4 font-medium text-right">Costo entradas</th>
                   <th className="py-3 pr-4 font-medium text-right">Ventas</th>
                   <th className="py-3 pr-4 font-medium text-right">Ajustes</th>
                   <th className="py-3 pr-4 font-medium text-right">Esperado</th>
@@ -469,6 +629,9 @@ function Inventory() {
                     <td className="py-3 pl-4 pr-4 font-medium">{product.productName}</td>
                     <td className="py-3 pr-4 text-right">{product.openingStock}</td>
                     <td className="py-3 pr-4 text-right">{product.entries}</td>
+                    <td className="py-3 pr-4 text-right">
+                      {formatCurrency(product.stockPurchaseExpenseAmount)}
+                    </td>
                     <td className="py-3 pr-4 text-right">{product.sales}</td>
                     <td className="py-3 pr-4 text-right">{signedQuantity(product.adjustments)}</td>
                     <td className="py-3 pr-4 text-right">{product.expectedStock}</td>
@@ -500,13 +663,14 @@ function Inventory() {
               ))}
             </div>
             <div className="hidden overflow-x-auto rounded-xl border md:block">
-              <table className="w-full min-w-[720px] text-sm">
+              <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-3 pl-4 pr-4 font-medium">Fecha</th>
                   <th className="py-3 pr-4 font-medium">Tipo</th>
                   <th className="py-3 pr-4 font-medium">Producto</th>
                   <th className="py-3 pr-4 font-medium">Nota</th>
+                  <th className="py-3 pr-4 font-medium text-right">Costo</th>
                   <th className="py-3 pr-4 font-medium text-right">Cantidad</th>
                 </tr>
               </thead>
@@ -523,6 +687,16 @@ function Inventory() {
                     </td>
                     <td className="py-3 pr-4">{movement.productName}</td>
                     <td className="py-3 pr-4">{movement.note ?? "—"}</td>
+                    <td className="py-3 pr-4 text-right">
+                      {movement.expenseAmount != null
+                        ? `${formatCurrency(movement.expenseAmount)} · ${
+                            PAYMENT_METHOD_LABELS[movement.expensePaymentMethod] ??
+                            movement.expensePaymentMethod
+                          } · ${
+                            movement.expensePaidFromCashRegister ? "Sale de caja" : "Fuera de caja"
+                          }`
+                        : "—"}
+                    </td>
                     <td className="py-3 pr-4 text-right font-medium">
                       {signedQuantity(movement.quantityDelta)}
                     </td>

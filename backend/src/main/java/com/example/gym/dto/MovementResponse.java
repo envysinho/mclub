@@ -16,6 +16,7 @@ public record MovementResponse(
         BigDecimal amount,
         int quantity,
         String clientName,
+        String createdByName,
         PaymentMethod paymentMethod,
         BigDecimal yapeAmount,
         BigDecimal cashAmount,
@@ -24,6 +25,7 @@ public record MovementResponse(
     public static MovementResponse from(Movement movement) {
         Client client = movement.getClient();
         String clientName = client == null ? null : client.getFirstName() + " " + client.getLastName();
+        String createdByName = movement.getCreatedBy() == null ? null : movement.getCreatedBy().getName();
         return new MovementResponse(
                 movement.getId(),
                 movement.getType(),
@@ -31,6 +33,7 @@ public record MovementResponse(
                 movement.getAmount(),
                 movement.getQuantity(),
                 clientName,
+                createdByName,
                 movement.getPaymentMethod(),
                 movement.getYapeAmount(),
                 movement.getCashAmount(),

@@ -15,6 +15,7 @@ import com.example.gym.dto.UpdateProductRequest;
 import com.example.gym.entity.Client;
 import com.example.gym.entity.Movement;
 import com.example.gym.entity.Product;
+import com.example.gym.entity.User;
 import com.example.gym.model.MovementType;
 import com.example.gym.model.PaymentMethod;
 import com.example.gym.repository.MovementRepository;
@@ -47,21 +48,41 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse create(CreateProductRequest request) {
+    public ProductResponse create(CreateProductRequest request, User createdBy) {
         Product product = new Product();
         applyFields(product, request.name(), request.price(), request.stock(), request.description());
         Product saved = productRepository.save(product);
-        inventoryService.recordInitialStock(saved, request.stock());
+        inventoryService.recordInitialStock(
+                saved,
+                request.stock(),
+                request.purchaseAmount(),
+                request.paymentMethod(),
+                request.yapeAmount(),
+                request.cashAmount(),
+                request.paidFromCashRegister(),
+                createdBy);
         return ProductResponse.from(saved);
     }
 
     @Transactional
-    public ProductResponse update(Long id, UpdateProductRequest request) {
+    public ProductResponse update(Long id, UpdateProductRequest request, User updatedBy) {
         Product product = getProductOrThrow(id);
         int stockDelta = request.stock() - product.getStock();
         applyFields(product, request.name(), request.price(), request.stock(), request.description());
         Product saved = productRepository.save(product);
-        inventoryService.recordProductStockAdjustment(saved, stockDelta);
+        if (stockDelta > 0 && hasPurchaseAmount(request.purchaseAmount())) {
+            inventoryService.recordProductStockPurchase(
+                    saved,
+                    stockDelta,
+                    request.purchaseAmount(),
+                    request.paymentMethod(),
+                    request.yapeAmount(),
+                    request.cashAmount(),
+                    request.paidFromCashRegister(),
+                    updatedBy);
+        } else {
+            inventoryService.recordProductStockAdjustment(saved, stockDelta);
+        }
         return ProductResponse.from(saved);
     }
 
@@ -72,7 +93,7 @@ public class ProductService {
     }
 
     @Transactional
-    public Movement sell(ProductSaleRequest request) {
+    public Movement sell(ProductSaleRequest request, User createdBy) {
         Product product = getProductOrThrow(request.productId());
 
         if (product.getStock() < request.quantity()) {
@@ -96,6 +117,7 @@ public class ProductService {
         movement.setAmount(totalAmount);
         movement.setQuantity(request.quantity());
         movement.setClient(client);
+        movement.setCreatedBy(createdBy);
         movement.setReferenceId(product.getId());
         movement.setPaymentMethod(request.paymentMethod());
         setMixedPaymentAmounts(movement, totalAmount, request.paymentMethod(), request.yapeAmount(), request.cashAmount());
@@ -149,6 +171,10 @@ public class ProductService {
         product.setPrice(price);
         product.setStock(stock);
         product.setDescription(trimToNull(description));
+    }
+
+    private boolean hasPurchaseAmount(BigDecimal amount) {
+        return amount != null && amount.compareTo(BigDecimal.ZERO) > 0;
     }
 
     private String trimToNull(String value) {

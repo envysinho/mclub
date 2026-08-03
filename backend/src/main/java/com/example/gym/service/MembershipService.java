@@ -17,6 +17,7 @@ import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
 import com.example.gym.entity.MembershipPlan;
 import com.example.gym.entity.Movement;
+import com.example.gym.entity.User;
 import com.example.gym.model.MembershipStatus;
 import com.example.gym.model.MovementType;
 import com.example.gym.model.PaymentMethod;
@@ -75,7 +76,7 @@ public class MembershipService {
     }
 
     @Transactional
-    public ClientMembership assignMembership(AssignMembershipRequest request) {
+    public ClientMembership assignMembership(AssignMembershipRequest request, User createdBy) {
         membershipStatusService.refreshExpiredMemberships();
 
         Client client = clientRepository.findById(request.clientId())
@@ -110,6 +111,7 @@ public class MembershipService {
         movement.setAmount(plan.getPrice());
         movement.setQuantity(1);
         movement.setClient(client);
+        movement.setCreatedBy(createdBy);
         movement.setReferenceId(saved.getId());
         movement.setPaymentMethod(request.paymentMethod());
         setMixedPaymentAmounts(movement, plan.getPrice(), request.paymentMethod(), request.yapeAmount(), request.cashAmount());

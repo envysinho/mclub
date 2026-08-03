@@ -44,14 +44,14 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserResponse> listUsers() {
-        return userService.findAll();
+    public List<UserResponse> listUsers(Authentication authentication) {
+        return userService.findAll(authenticatedUser(authentication));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
-        return userService.create(request);
+    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request, Authentication authentication) {
+        return userService.create(request, authenticatedUser(authentication));
     }
 
     @PutMapping("/{id}")
@@ -59,7 +59,7 @@ public class UserController {
             @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserRequest request,
             Authentication authentication) {
-        UserResponse user = userService.update(id, request);
+        UserResponse user = userService.update(id, request, authenticatedUser(authentication));
         String token = isAuthenticatedUser(authentication, user.id())
                 ? jwtService.generateTokenForUserId(user.id())
                 : null;
@@ -73,12 +73,20 @@ public class UserController {
             @RequestHeader(name = "X-Confirm-Password", required = false) String confirmationPassword,
             Authentication authentication) {
         deleteConfirmationService.verify(authentication, confirmationPassword);
-        userService.delete(id);
+        userService.delete(id, authenticatedUser(authentication));
     }
 
     private boolean isAuthenticatedUser(Authentication authentication, Long userId) {
         return authentication != null
                 && authentication.getPrincipal() instanceof UserPrincipal principal
                 && principal.getUser().getId().equals(userId);
+    }
+
+    private com.example.gym.entity.User authenticatedUser(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUser();
+        }
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Sesión inválida");
     }
 }

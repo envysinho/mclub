@@ -45,6 +45,9 @@ function Users() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const canManageAllUsers = currentUser?.role === "SUDO";
+  const canCreateUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
+  const canEditUser = (user) => canManageAllUsers || currentUser?.id === user.id;
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -74,7 +77,11 @@ function Users() {
   };
 
   const openCreateForm = () => {
-    setUserForm(EMPTY_USER);
+    setUserForm({
+      ...EMPTY_USER,
+      role: "USER",
+      enabled: true,
+    });
     setEditingUser(null);
     setFormError(null);
     setShowForm(true);
@@ -105,8 +112,8 @@ function Users() {
           {
             username: userForm.username,
             name: userForm.name,
-            role: userForm.role,
-            enabled: userForm.enabled,
+            role: canManageAllUsers ? userForm.role : editingUser.role,
+            enabled: canManageAllUsers ? userForm.enabled : editingUser.enabled,
             password: userForm.password,
           },
           handleUnauthorized
@@ -116,7 +123,13 @@ function Users() {
           updateCurrentUser(updatedUser, result.token);
         }
       } else {
-        await createUser(userForm, handleUnauthorized);
+        await createUser(
+          {
+            ...userForm,
+            role: canManageAllUsers ? userForm.role : "USER",
+          },
+          handleUnauthorized
+        );
       }
       resetForm();
       await loadUsers();
@@ -175,29 +188,34 @@ function Users() {
     }
   };
 
-  const renderEnabledSwitch = (user) => (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={user.enabled}
-      aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${displayUserName(user)}`}
-      disabled={updatingUserId === user.id}
-      className={cn(
-        "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors disabled:opacity-50",
-        user.enabled
-          ? "border-emerald-500/30 bg-emerald-500/20"
-          : "border-border bg-muted/50"
-      )}
-      onClick={() => handleQuickUpdate(user, { enabled: !user.enabled })}
-    >
-      <span
+  const renderEnabledSwitch = (user) =>
+    canManageAllUsers ? (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={user.enabled}
+        aria-label={`${user.enabled ? "Desactivar" : "Activar"} a ${displayUserName(user)}`}
+        disabled={updatingUserId === user.id}
         className={cn(
-          "size-5 rounded-full bg-foreground shadow-sm transition-transform",
-          user.enabled ? "translate-x-5" : "translate-x-0"
+          "inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-0.5 transition-colors disabled:opacity-50",
+          user.enabled
+            ? "border-emerald-500/30 bg-emerald-500/20"
+            : "border-border bg-muted/50"
         )}
-      />
-    </button>
-  );
+        onClick={() => handleQuickUpdate(user, { enabled: !user.enabled })}
+      >
+        <span
+          className={cn(
+            "size-5 rounded-full bg-foreground shadow-sm transition-transform",
+            user.enabled ? "translate-x-5" : "translate-x-0"
+          )}
+        />
+      </button>
+    ) : (
+      <Badge variant={user.enabled ? "secondary" : "outline"} className="w-fit">
+        {user.enabled ? "Activo" : "Inactivo"}
+      </Badge>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -210,7 +228,7 @@ function Users() {
 
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button className="w-full sm:w-auto" onClick={openCreateForm}>
+            <Button className="w-full sm:w-auto" onClick={openCreateForm} disabled={!canCreateUsers}>
               <UserPlus />
               Nuevo usuario
             </Button>
@@ -233,8 +251,8 @@ function Users() {
                 </SheetTitle>
                 <SheetDescription>
                   {editingUser
-                    ? "Actualiza sus datos, rol o estado de acceso."
-                    : "Crea una cuenta y asigna su rol dentro del sistema."}
+                    ? "Actualiza sus datos de acceso."
+                    : "Crea una cuenta de usuario para ventas."}
                 </SheetDescription>
               </SheetHeader>
               <form onSubmit={handleSubmit} className="grid gap-4 px-4 pb-4">
@@ -275,47 +293,58 @@ function Users() {
                     placeholder={editingUser ? "Dejar vacío para mantenerla" : undefined}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Rol</Label>
-                  <select
-                    id="role"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                    value={userForm.role}
-                    onChange={(event) => setUserForm({ ...userForm, role: event.target.value })}
-                  >
-                    <option value="USER">user</option>
-                    <option value="ADMIN">admin</option>
-                    <option value="SUDO">sudo</option>
-                  </select>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-3">
-                  <div>
-                    <Label htmlFor="userEnabled">Estado</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {userForm.enabled ? "Activo" : "Inactivo"}
-                    </p>
+                {canManageAllUsers ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Rol</Label>
+                    <select
+                      id="role"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                      value={userForm.role}
+                      onChange={(event) => setUserForm({ ...userForm, role: event.target.value })}
+                    >
+                      <option value="USER">user</option>
+                      <option value="ADMIN">admin</option>
+                      <option value="SUDO">sudo</option>
+                    </select>
                   </div>
-                  <button
-                    id="userEnabled"
-                    type="button"
-                    role="switch"
-                    aria-checked={userForm.enabled}
-                    className={cn(
-                      "inline-flex h-7 w-12 items-center rounded-full border p-0.5 transition-colors",
-                      userForm.enabled
-                        ? "border-emerald-500/30 bg-emerald-500/20"
-                        : "border-border bg-muted/50"
-                    )}
-                    onClick={() => setUserForm({ ...userForm, enabled: !userForm.enabled })}
-                  >
-                    <span
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Rol</Label>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                      {editingUser ? getRoleLabel(editingUser.role) : "user"}
+                    </div>
+                  </div>
+                )}
+                {canManageAllUsers && (
+                  <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-3">
+                    <div>
+                      <Label htmlFor="userEnabled">Estado</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {userForm.enabled ? "Activo" : "Inactivo"}
+                      </p>
+                    </div>
+                    <button
+                      id="userEnabled"
+                      type="button"
+                      role="switch"
+                      aria-checked={userForm.enabled}
                       className={cn(
-                        "size-5 rounded-full bg-foreground shadow-sm transition-transform",
-                        userForm.enabled ? "translate-x-5" : "translate-x-0"
+                        "inline-flex h-7 w-12 items-center rounded-full border p-0.5 transition-colors",
+                        userForm.enabled
+                          ? "border-emerald-500/30 bg-emerald-500/20"
+                          : "border-border bg-muted/50"
                       )}
-                    />
-                  </button>
-                </div>
+                      onClick={() => setUserForm({ ...userForm, enabled: !userForm.enabled })}
+                    >
+                      <span
+                        className={cn(
+                          "size-5 rounded-full bg-foreground shadow-sm transition-transform",
+                          userForm.enabled ? "translate-x-5" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+                )}
                 {formError && <p className="text-sm text-destructive">{formError}</p>}
                 <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button type="button" variant="outline" onClick={resetForm}>
@@ -351,33 +380,39 @@ function Users() {
                   </Badge>
                   <div className="flex items-center gap-2">
                     {renderEnabledSwitch(user)}
-                    <span className="text-sm text-muted-foreground">
-                      {user.enabled ? "Activo" : "Inactivo"}
-                    </span>
+                    {canManageAllUsers && (
+                      <span className="text-sm text-muted-foreground">
+                        {user.enabled ? "Activo" : "Inactivo"}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditForm(user)}
-                    >
-                      <Pencil className="size-4" />
-                      Editar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setDeleteTarget(user);
-                        setDeleteError(null);
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                      Eliminar
-                    </Button>
+                    {canEditUser(user) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditForm(user)}
+                      >
+                        <Pencil className="size-4" />
+                        Editar
+                      </Button>
+                    )}
+                    {canManageAllUsers && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setDeleteTarget(user);
+                          setDeleteError(null);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        Eliminar
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -45,6 +45,10 @@ public class Movement {
     @JoinColumn(name = "client_id")
     private Client client;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
+
     @Column(name = "reference_id")
     private Long referenceId;
 
@@ -104,6 +108,14 @@ public class Movement {
 
     public void setClient(Client client) {
         this.client = client;
+    }
+
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(User createdBy) {
+        this.createdBy = createdBy;
     }
 
     public Long getReferenceId() {

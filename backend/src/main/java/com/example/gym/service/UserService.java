@@ -55,14 +55,19 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> findAll() {
-        return userRepository.findAll().stream()
+    public List<UserResponse> findAll(User actor) {
+        List<User> users = actor.getRole() == Role.SUDO
+                ? userRepository.findAll()
+                : List.of(actor);
+
+        return users.stream()
                 .map(UserResponse::from)
                 .toList();
     }
 
     @Transactional
-    public UserResponse create(CreateUserRequest request) {
+    public UserResponse create(CreateUserRequest request, User actor) {
+        Role role = resolveCreatableRole(request.role(), actor);
         String username = request.username().trim();
         if (userRepository.findByUsername(username).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El usuario ya existe");
@@ -72,16 +77,17 @@ public class UserService {
         user.setUsername(username);
         user.setName(request.name().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRole(request.role());
+        user.setRole(role);
         user.setEnabled(request.enabled() == null || request.enabled());
         return UserResponse.from(userRepository.save(user));
     }
 
     @Transactional
-    public UserResponse update(Long id, UpdateUserRequest request) {
+    public UserResponse update(Long id, UpdateUserRequest request, User actor) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
+        ensureCanUpdate(user, request, actor);
         ensureActiveSudoWillRemain(user, request.role(), request.enabled());
 
         if (request.username() != null && !request.username().isBlank()) {
@@ -107,7 +113,11 @@ public class UserService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, User actor) {
+        if (actor.getRole() != Role.SUDO) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para eliminar usuarios");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
@@ -143,6 +153,36 @@ public class UserService {
 
         if (currentlyActiveSudo && !willBeActiveSudo && userRepository.countByRoleAndEnabledTrue(Role.SUDO) <= 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe existir al menos un usuario SUDO activo");
+        }
+    }
+
+    private Role resolveCreatableRole(Role requestedRole, User actor) {
+        if (actor.getRole() == Role.SUDO) {
+            return requestedRole;
+        }
+
+        if (requestedRole != Role.USER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El admin solo puede crear usuarios USER");
+        }
+
+        return Role.USER;
+    }
+
+    private void ensureCanUpdate(User user, UpdateUserRequest request, User actor) {
+        if (actor.getRole() == Role.SUDO) {
+            return;
+        }
+
+        if (!actor.getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo puedes editar tu propio usuario");
+        }
+
+        if (request.role() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes cambiar tu rol");
+        }
+
+        if (request.enabled() != null && !request.enabled()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes desactivar tu propio usuario");
         }
     }
 

@@ -12,6 +12,7 @@ import com.example.gym.dto.CreateClientRequest;
 import com.example.gym.dto.UpdateClientRequest;
 import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
+import com.example.gym.entity.User;
 import com.example.gym.model.MembershipStatus;
 import com.example.gym.repository.ClientMembershipRepository;
 import com.example.gym.repository.ClientRepository;
@@ -51,11 +52,12 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponse create(CreateClientRequest request) {
+    public ClientResponse create(CreateClientRequest request, User createdBy) {
         Client client = new Client();
         applyFields(client, request.firstName(), request.lastName(),
                 request.phone(), request.documentId());
         client.setActive(request.active() == null || request.active());
+        client.setCreatedBy(createdBy);
         return toResponse(clientRepository.save(client));
     }
 

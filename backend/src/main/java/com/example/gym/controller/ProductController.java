@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.gym.dto.CreateProductRequest;
 import com.example.gym.dto.ProductResponse;
 import com.example.gym.dto.UpdateProductRequest;
+import com.example.gym.security.UserPrincipal;
 import com.example.gym.service.ProductService;
 import com.example.gym.service.DeleteConfirmationService;
 
@@ -42,15 +43,18 @@ public class ProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductResponse createProduct(@Valid @RequestBody CreateProductRequest request) {
-        return productService.create(request);
+    public ProductResponse createProduct(
+            @Valid @RequestBody CreateProductRequest request,
+            Authentication authentication) {
+        return productService.create(request, authenticatedUser(authentication));
     }
 
     @PutMapping("/{id}")
     public ProductResponse updateProduct(
             @PathVariable("id") Long id,
-            @Valid @RequestBody UpdateProductRequest request) {
-        return productService.update(id, request);
+            @Valid @RequestBody UpdateProductRequest request,
+            Authentication authentication) {
+        return productService.update(id, request, authenticatedUser(authentication));
     }
 
     @DeleteMapping("/{id}")
@@ -61,5 +65,12 @@ public class ProductController {
             Authentication authentication) {
         deleteConfirmationService.verify(authentication, confirmationPassword);
         productService.delete(id);
+    }
+
+    private com.example.gym.entity.User authenticatedUser(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUser();
+        }
+        return null;
     }
 }

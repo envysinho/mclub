@@ -115,7 +115,7 @@ function StatCard({ icon: Icon, label, value, hint }) {
   );
 }
 
-function MovementMobileCard({ movement, canDeleteMovements, onDelete }) {
+function MovementMobileCard({ movement, canDeleteMovements, canViewAudit, onDelete }) {
   return (
     <div className="rounded-xl border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
@@ -134,6 +134,11 @@ function MovementMobileCard({ movement, canDeleteMovements, onDelete }) {
           <p className="break-words text-sm text-muted-foreground">
             {movement.clientName ?? "Sin cliente"} · {formatPaymentMethod(movement)}
           </p>
+          {canViewAudit && (
+            <p className="break-words text-xs text-muted-foreground">
+              Realizado por {movement.createdByName ?? "Sin responsable"}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <strong className="whitespace-nowrap text-sm">
@@ -177,6 +182,7 @@ function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canDeleteMovements = user?.role === "SUDO";
+  const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
 
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
@@ -892,6 +898,7 @@ function Dashboard() {
                   key={movement.id}
                   movement={movement}
                   canDeleteMovements={canDeleteMovements}
+                  canViewAudit={canViewAudit}
                   onDelete={(target) => {
                     setDeleteTarget(target);
                     setDeleteError(null);
@@ -907,6 +914,9 @@ function Dashboard() {
                   <th className="pb-3 pr-4 font-medium">Tipo</th>
                   <th className="pb-3 pr-4 font-medium">Descripción</th>
                   <th className="pb-3 pr-4 font-medium">Cliente</th>
+                  {canViewAudit && (
+                    <th className="pb-3 pr-4 font-medium">Realizado por</th>
+                  )}
                   <th className="pb-3 pr-4 font-medium">Pago</th>
                   <th className="pb-3 font-medium text-right">Monto</th>
                   {canDeleteMovements && (
@@ -927,6 +937,9 @@ function Dashboard() {
                     </td>
                     <td className="py-3 pr-4">{movement.description}</td>
                     <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                    {canViewAudit && (
+                      <td className="py-3 pr-4">{movement.createdByName ?? "—"}</td>
+                    )}
                     <td className="py-3 pr-4 whitespace-nowrap">
                       {formatPaymentMethod(movement)}
                     </td>

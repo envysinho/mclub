@@ -21,7 +21,7 @@ import {
   listProducts,
   updateProduct,
 } from "@/lib/api";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -29,10 +29,16 @@ const EMPTY_PRODUCT = {
   name: "",
   price: "",
   stock: "0",
+  purchaseAmount: "",
+  paymentMethod: "EFECTIVO",
+  yapeAmount: "",
+  cashAmount: "",
+  paidFromCashRegister: true,
   description: "",
 };
 
 const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
+const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
 
 function Products({ searchQuery = "" }) {
   const { logout, user } = useAuth();
@@ -92,6 +98,11 @@ function Products({ searchQuery = "" }) {
       name: product.name,
       price: String(product.price),
       stock: String(product.stock),
+      purchaseAmount: "",
+      paymentMethod: "EFECTIVO",
+      yapeAmount: "",
+      cashAmount: "",
+      paidFromCashRegister: true,
       description: product.description ?? "",
     });
     setShowForm(true);
@@ -103,10 +114,27 @@ function Products({ searchQuery = "" }) {
     setFormError(null);
     setIsSubmitting(true);
 
+    const stockEntryQuantity = Math.max(
+      0,
+      Number(productForm.stock || 0) - (editingProduct ? Number(editingProduct.stock || 0) : 0)
+    );
+    const hasPurchaseExpense = stockEntryQuantity > 0 && productForm.purchaseAmount !== "";
+
     const payload = {
       name: productForm.name.trim(),
       price: Number(productForm.price),
       stock: Number(productForm.stock),
+      purchaseAmount: hasPurchaseExpense ? Number(productForm.purchaseAmount) : null,
+      paymentMethod: hasPurchaseExpense ? productForm.paymentMethod : null,
+      yapeAmount:
+        hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
+          ? Number(productForm.yapeAmount || 0)
+          : null,
+      cashAmount:
+        hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
+          ? Number(productForm.cashAmount || 0)
+          : null,
+      paidFromCashRegister: hasPurchaseExpense ? productForm.paidFromCashRegister : false,
       description: productForm.description.trim() || null,
     };
 
@@ -158,6 +186,11 @@ function Products({ searchQuery = "" }) {
     >
       {product.stock > 0 ? "Disponible" : "Agotado"}
     </Badge>
+  );
+
+  const stockEntryQuantity = Math.max(
+    0,
+    Number(productForm.stock || 0) - (editingProduct ? Number(editingProduct.stock || 0) : 0)
   );
 
   const renderProductListMobileCard = (product) => (
@@ -348,6 +381,107 @@ function Products({ searchQuery = "" }) {
                     required
                   />
                 </div>
+                {stockEntryQuantity > 0 && (
+                  <div className="grid gap-4 rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="productPurchaseAmount">Egreso de la entrada</Label>
+                      <Badge variant="secondary">+{stockEntryQuantity} unidades</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="productPurchaseAmount">Costo total</Label>
+                      <Input
+                        id="productPurchaseAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={productForm.purchaseAmount}
+                        onChange={(event) =>
+                          setProductForm({
+                            ...productForm,
+                            purchaseAmount: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="productPaymentMethod">Medio de pago</Label>
+                      <select
+                        id="productPaymentMethod"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                        value={productForm.paymentMethod}
+                        onChange={(event) =>
+                          setProductForm({
+                            ...productForm,
+                            paymentMethod: event.target.value,
+                            yapeAmount: "",
+                            cashAmount: "",
+                          })
+                        }
+                      >
+                        {PAYMENT_METHOD_OPTIONS.map((method) => (
+                          <option key={method} value={method}>
+                            {PAYMENT_METHOD_LABELS[method]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {productForm.paymentMethod === "MIXTO" && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="productPurchaseYapeAmount">Yape</Label>
+                          <Input
+                            id="productPurchaseYapeAmount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={productForm.yapeAmount}
+                            onChange={(event) =>
+                              setProductForm({
+                                ...productForm,
+                                yapeAmount: event.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="productPurchaseCashAmount">Efectivo</Label>
+                          <Input
+                            id="productPurchaseCashAmount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={productForm.cashAmount}
+                            onChange={(event) =>
+                              setProductForm({
+                                ...productForm,
+                                cashAmount: event.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <label className="flex items-start gap-3 rounded-lg border bg-card px-3 py-3 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={productForm.paidFromCashRegister}
+                        onChange={(event) =>
+                          setProductForm({
+                            ...productForm,
+                            paidFromCashRegister: event.target.checked,
+                          })
+                        }
+                      />
+                      <span>
+                        <span className="block font-medium">Sale de caja</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Descuenta esta compra del cierre esperado del día.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="productDescription">Descripción</Label>
                   <Input

@@ -19,6 +19,7 @@ import com.example.gym.dto.AssignMembershipRequest;
 import com.example.gym.dto.CreateMembershipPlanRequest;
 import com.example.gym.dto.MembershipPlanResponse;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
+import com.example.gym.security.UserPrincipal;
 import com.example.gym.service.MembershipService;
 import com.example.gym.service.DeleteConfirmationService;
 
@@ -66,7 +67,14 @@ public class MembershipController {
 
     @PostMapping("/memberships")
     @ResponseStatus(HttpStatus.CREATED)
-    public void assignMembership(@Valid @RequestBody AssignMembershipRequest request) {
-        membershipService.assignMembership(request);
+    public void assignMembership(@Valid @RequestBody AssignMembershipRequest request, Authentication authentication) {
+        membershipService.assignMembership(request, authenticatedUser(authentication));
+    }
+
+    private com.example.gym.entity.User authenticatedUser(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUser();
+        }
+        return null;
     }
 }

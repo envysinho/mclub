@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.gym.dto.ClientResponse;
 import com.example.gym.dto.CreateClientRequest;
 import com.example.gym.dto.UpdateClientRequest;
+import com.example.gym.security.UserPrincipal;
 import com.example.gym.service.ClientService;
 import com.example.gym.service.DeleteConfirmationService;
 
@@ -47,8 +48,8 @@ public class ClientController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ClientResponse createClient(@Valid @RequestBody CreateClientRequest request) {
-        return clientService.create(request);
+    public ClientResponse createClient(@Valid @RequestBody CreateClientRequest request, Authentication authentication) {
+        return clientService.create(request, authenticatedUser(authentication));
     }
 
     @PutMapping("/{id}")
@@ -66,5 +67,12 @@ public class ClientController {
             Authentication authentication) {
         deleteConfirmationService.verify(authentication, confirmationPassword);
         clientService.delete(id);
+    }
+
+    private com.example.gym.entity.User authenticatedUser(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUser();
+        }
+        return null;
     }
 }

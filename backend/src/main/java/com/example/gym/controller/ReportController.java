@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.gym.dto.DailyReportResponse;
 import com.example.gym.dto.MonthlyReportResponse;
 import com.example.gym.service.ReportService;
 
@@ -21,5 +22,10 @@ public class ReportController {
     @GetMapping("/monthly")
     public MonthlyReportResponse getMonthlyReport(@RequestParam(required = false) String month) {
         return reportService.getMonthlyReport(month);
+    }
+
+    @GetMapping("/daily")
+    public DailyReportResponse getDailyReport(@RequestParam(required = false) String date) {
+        return reportService.getDailyReport(date);
     }
 }

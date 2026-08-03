@@ -16,6 +16,16 @@ export const STOCK_MOVEMENT_TYPE_LABELS = {
   ADJUSTMENT: "Ajuste",
 };
 
+export const EXPENSE_CATEGORY_LABELS = {
+  STOCK_PURCHASE: "Compra de stock",
+  SERVICES: "Servicios",
+  RENT: "Alquiler",
+  CLEANING: "Limpieza",
+  MAINTENANCE: "Mantenimiento",
+  WITHDRAWAL: "Retiro",
+  OTHER: "Otro",
+};
+
 export const PAYMENT_METHOD_LABELS = {
   EFECTIVO: "Efectivo",
   YAPE: "Yape",

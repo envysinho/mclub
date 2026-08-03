@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import Dashboard from "@/pages/Dashboard";
+import CashRegister from "@/pages/CashRegister";
 import Clients from "@/pages/Clients";
 import Inventory from "@/pages/Inventory";
 import Products from "@/pages/Products";
@@ -30,6 +31,9 @@ const PAGE_META = {
   },
   inventory: {
     title: "Inventario",
+  },
+  cash: {
+    title: "Caja",
   },
   reports: {
     title: "Reportes",
@@ -142,10 +146,12 @@ function AppContent() {
         return <Products searchQuery={activeSearchQuery} />;
       case "inventory":
         return <Inventory />;
+      case "cash":
+        return <CashRegister />;
       case "reports":
-        return <Reports />;
+        return user?.role === "SUDO" || user?.role === "ADMIN" ? <Reports /> : <Dashboard />;
       case "users":
-        return user?.role === "SUDO" ? <Users /> : <Dashboard />;
+        return user?.role === "SUDO" || user?.role === "ADMIN" ? <Users /> : <Dashboard />;
       case "dashboard":
       default:
         return <Dashboard />;

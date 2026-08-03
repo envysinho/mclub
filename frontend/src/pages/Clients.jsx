@@ -400,6 +400,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const isMembershipsModule = module === "memberships";
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
   const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
+  const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
 
   return (
     <div className="flex flex-col gap-4">
@@ -596,6 +597,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         <p className="text-sm text-muted-foreground break-words">
                           {client.phone || "Sin teléfono"}
                         </p>
+                        {canViewAudit && (
+                          <p className="text-xs text-muted-foreground">
+                            Agregado por {client.createdByName ?? "Sin responsable"}
+                          </p>
+                        )}
                       </div>
                       {renderClientStatusBadge(client)}
                     </div>
@@ -635,6 +641,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                       <h3 className="font-semibold">{fullName(client)}</h3>
                       {renderClientMembershipInline(client)}
+                      {canViewAudit && (
+                        <span className="text-xs text-muted-foreground">
+                          Agregado por {client.createdByName ?? "Sin responsable"}
+                        </span>
+                      )}
                     </div>
                     {canManageClients && (
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">

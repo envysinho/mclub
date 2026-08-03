@@ -15,5 +15,8 @@ public record MonthlyReportResponse(
         BigDecimal membershipRevenue,
         BigDecimal productRevenue,
         BigDecimal totalRevenue,
+        BigDecimal totalExpenses,
+        BigDecimal netBalance,
+        List<ExpenseResponse> expenses,
         List<MovementResponse> movements) {
 }
