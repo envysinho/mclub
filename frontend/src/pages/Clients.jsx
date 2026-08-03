@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
+import { LayoutGrid, List, MessageCircle, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,41 @@ function membershipUrgencyClass(client) {
   }
 
   return "text-emerald-500";
+}
+
+function normalizeWhatsappPhone(phone) {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+
+  if (!digits) {
+    return null;
+  }
+
+  if (digits.length === 9) {
+    return `51${digits}`;
+  }
+
+  if (digits.startsWith("51")) {
+    return digits;
+  }
+
+  return null;
+}
+
+function buildWhatsappReminderUrl(client) {
+  const phone = normalizeWhatsappPhone(client.phone);
+  const membership = client.activeMembership;
+
+  if (!phone || !membership) {
+    return null;
+  }
+
+  const message = `Hola ${fullName(client)}, te escribimos para recordarte que tu membresía ${
+    membership.planName
+  } está próxima a vencer el ${formatDate(
+    membership.endDate
+  )}. Responde a este mensaje o acercarte al gimnasio para renovarla.`;
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
 function Clients({ module = "clients", searchQuery = "" }) {
@@ -396,6 +431,34 @@ function Clients({ module = "clients", searchQuery = "" }) {
     );
   };
 
+  const renderWhatsappReminderButton = (client) => {
+    const reminderUrl = buildWhatsappReminderUrl(client);
+    const disabledReason = !client.phone
+      ? "Cliente sin teléfono"
+      : !client.activeMembership
+        ? "Cliente sin membresía activa"
+        : "Teléfono no válido para WhatsApp";
+    const title = reminderUrl ? "Enviar recordatorio por WhatsApp" : disabledReason;
+
+    return (
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="outline"
+        aria-label={`Enviar recordatorio por WhatsApp a ${fullName(client)}`}
+        title={title}
+        disabled={!reminderUrl}
+        onClick={() => {
+          if (reminderUrl) {
+            window.open(reminderUrl, "_blank", "noopener,noreferrer");
+          }
+        }}
+      >
+        <MessageCircle className="size-4" />
+      </Button>
+    );
+  };
+
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
@@ -607,26 +670,29 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     </div>
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                       <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
-                      {canManageClients && (
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 sm:flex-none"
-                          onClick={() => openEditClient(client)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                          onClick={() => setDeleteTarget({ type: "client", item: client })}
-                        >
-                          Eliminar
-                        </Button>
+                        {renderWhatsappReminderButton(client)}
+                        {canManageClients && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 sm:flex-none"
+                              onClick={() => openEditClient(client)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                              onClick={() => setDeleteTarget({ type: "client", item: client })}
+                            >
+                              Eliminar
+                            </Button>
+                          </>
+                        )}
                       </div>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -647,27 +713,30 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         </span>
                       )}
                     </div>
-                    {canManageClients && (
                     <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
-                      {renderClientStatusSwitch(client)}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 sm:flex-none"
-                        onClick={() => openEditClient(client)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                        onClick={() => setDeleteTarget({ type: "client", item: client })}
-                      >
-                        Eliminar
-                      </Button>
+                      {renderWhatsappReminderButton(client)}
+                      {canManageClients && (
+                        <>
+                          {renderClientStatusSwitch(client)}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => openEditClient(client)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                            onClick={() => setDeleteTarget({ type: "client", item: client })}
+                          >
+                            Eliminar
+                          </Button>
+                        </>
+                      )}
                     </div>
-                    )}
                   </div>
                 ))}
               </div>
