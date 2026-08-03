@@ -81,7 +81,7 @@ function membershipUrgencyClass(client) {
   return "text-emerald-500";
 }
 
-function Clients({ module = "clients" }) {
+function Clients({ module = "clients", searchQuery = "" }) {
   const { logout, user } = useAuth();
   const isMobile = useIsMobile();
   const [clients, setClients] = useState([]);
@@ -136,9 +136,24 @@ function Clients({ module = "clients" }) {
     }
   }, [isMobile, module]);
 
-  const sortedClients = useMemo(
-    () =>
-      [...clients].sort((firstClient, secondClient) => {
+  const sortedClients = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLocaleLowerCase("es");
+    const filteredClients = normalizedSearch
+      ? clients.filter((client) =>
+          [
+            fullName(client),
+            client.firstName,
+            client.lastName,
+            client.phone,
+            client.documentId,
+            client.activeMembership?.planName,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLocaleLowerCase("es").includes(normalizedSearch))
+        )
+      : clients;
+
+    return [...filteredClients].sort((firstClient, secondClient) => {
         const firstDays = getMembershipDaysRemaining(firstClient);
         const secondDays = getMembershipDaysRemaining(secondClient);
 
@@ -147,9 +162,8 @@ function Clients({ module = "clients" }) {
         }
 
         return fullName(firstClient).localeCompare(fullName(secondClient), "es");
-      }),
-    [clients]
-  );
+      });
+  }, [clients, searchQuery]);
 
   const resetClientForm = () => {
     setClientForm(EMPTY_CLIENT);
@@ -647,7 +661,11 @@ function Clients({ module = "clients" }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No hay clientes registrados.</p>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery.trim()
+                  ? "No hay clientes que coincidan con la búsqueda."
+                  : "No hay clientes registrados."}
+              </p>
             )}
           </div>
         )}

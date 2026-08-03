@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -12,51 +12,134 @@ import Products from "@/pages/Products";
 import Reports from "@/pages/Reports";
 import Users from "@/pages/Users";
 import Login from "@/pages/Login";
+import { listClients, listProducts } from "@/lib/api";
+import { fullName } from "@/lib/constants";
 
 const PAGE_META = {
   dashboard: {
     title: "Dashboard",
-    description: "Resumen del gimnasio y movimientos recientes.",
   },
   clients: {
     title: "Clientes",
-    description: "Administra el registro de clientes del gimnasio.",
   },
   memberships: {
     title: "Membresías",
-    description: "Administra los planes de membresía del gimnasio.",
   },
   products: {
     title: "Productos",
-    description: "Administra el catálogo de productos del gimnasio.",
   },
   inventory: {
     title: "Inventario",
-    description: "Revisa stock mensual, entradas, ventas y ajustes.",
   },
   reports: {
     title: "Reportes",
-    description: "Revisa matriculados, ventas e ingresos por mes.",
   },
   users: {
     title: "Usuarios",
-    description: "Administra accesos, roles y estado de los usuarios.",
   },
 };
 
+const MIN_SEARCH_LENGTH = 3;
+
+function matchesSearch(values, normalizedSearch) {
+  return values
+    .filter((value) => value !== null && value !== undefined)
+    .some((value) => String(value).toLocaleLowerCase("es").includes(normalizedSearch));
+}
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchCacheRef = useRef({ clients: null, products: null });
   const { isDark, toggleTheme } = useTheme();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+  };
+
+  const activeSearchQuery =
+    searchQuery.trim().length >= MIN_SEARCH_LENGTH ? searchQuery : "";
+
+  useEffect(() => {
+    const normalizedSearch = activeSearchQuery.trim().toLocaleLowerCase("es");
+
+    if (!normalizedSearch || !isAuthenticated) {
+      return undefined;
+    }
+
+    let isCanceled = false;
+
+    async function routeSearch() {
+      try {
+        const cache = searchCacheRef.current;
+        const [clientsData, productsData] = await Promise.all([
+          cache.clients ?? listClients(logout),
+          cache.products ?? listProducts(logout),
+        ]);
+
+        cache.clients = clientsData;
+        cache.products = productsData;
+
+        if (isCanceled) {
+          return;
+        }
+
+        const hasClientMatch = clientsData.some((client) =>
+          matchesSearch(
+            [
+              fullName(client),
+              client.firstName,
+              client.lastName,
+              client.phone,
+              client.documentId,
+              client.activeMembership?.planName,
+            ],
+            normalizedSearch
+          )
+        );
+        const hasProductMatch = productsData.some((product) =>
+          matchesSearch(
+            [product.name, product.description, product.price, product.stock],
+            normalizedSearch
+          )
+        );
+
+        setCurrentPage((page) => {
+          if (hasProductMatch && !hasClientMatch) {
+            return "products";
+          }
+
+          if (hasClientMatch && !hasProductMatch) {
+            return "clients";
+          }
+
+          if (page === "clients" || page === "products") {
+            return page;
+          }
+
+          return "clients";
+        });
+      } catch {
+        // Auth failures are handled by apiFetch; keep the current page for other errors.
+      }
+    }
+
+    routeSearch();
+
+    return () => {
+      isCanceled = true;
+    };
+  }, [activeSearchQuery, isAuthenticated, logout]);
 
   const renderPage = () => {
     switch (currentPage) {
       case "clients":
-        return <Clients key="clients" module="clients" />;
+        return <Clients key="clients" module="clients" searchQuery={activeSearchQuery} />;
       case "memberships":
         return <Clients key="memberships" module="memberships" />;
       case "products":
-        return <Products />;
+        return <Products searchQuery={activeSearchQuery} />;
       case "inventory":
         return <Inventory />;
       case "reports":
@@ -78,13 +161,18 @@ function AppContent() {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+        <AppSidebar
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+        />
         <SidebarInset>
           <AppHeader
             title={currentPageMeta.title}
-            description={currentPageMeta.description}
             isDark={isDark}
             onToggleTheme={toggleTheme}
+            showSearch
+            searchValue={searchQuery}
+            onSearchChange={handleSearchChange}
           />
           <div className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4">{renderPage()}</div>
         </SidebarInset>

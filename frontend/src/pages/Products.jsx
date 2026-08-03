@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List, PackagePlus, Pencil, Trash2 } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
@@ -34,7 +34,7 @@ const EMPTY_PRODUCT = {
 
 const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
 
-function Products() {
+function Products({ searchQuery = "" }) {
   const { logout, user } = useAuth();
   const isMobile = useIsMobile();
   const [products, setProducts] = useState([]);
@@ -206,6 +206,25 @@ function Products() {
     </div>
   );
 
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLocaleLowerCase("es");
+
+    if (!normalizedSearch) {
+      return products;
+    }
+
+    return products.filter((product) =>
+      [
+        product.name,
+        product.description,
+        product.price,
+        product.stock,
+      ]
+        .filter((value) => value !== null && value !== undefined)
+        .some((value) => String(value).toLocaleLowerCase("es").includes(normalizedSearch))
+    );
+  }, [products, searchQuery]);
+
   return (
     <div className="flex flex-col gap-4">
       <PageCard>
@@ -364,9 +383,9 @@ function Products() {
                 <Skeleton key={index} className="h-24 w-full rounded-xl" />
               ))}
             </div>
-          ) : products.length && productView === "grid" ? (
+          ) : filteredProducts.length && productView === "grid" ? (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-3 lg:grid-cols-2">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <div key={product.id} className="rounded-lg border p-3 sm:rounded-xl sm:p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                     <div className="min-w-0">
@@ -427,13 +446,13 @@ function Products() {
                 </div>
               ))}
             </div>
-          ) : products.length ? (
+          ) : filteredProducts.length ? (
             <>
               <div className="overflow-hidden rounded-xl border md:hidden">
-                {products.map((product) => renderProductListMobileCard(product))}
+                {filteredProducts.map((product) => renderProductListMobileCard(product))}
               </div>
               <div className="hidden overflow-x-auto rounded-xl border md:block">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <div
                     key={product.id}
                     className="grid min-w-[920px] items-center gap-4 border-b px-4 py-3 last:border-b-0"
@@ -474,7 +493,11 @@ function Products() {
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? "No hay productos que coincidan con la búsqueda."
+                : "No hay productos registrados."}
+            </p>
           )}
         </div>
       </PageCard>
