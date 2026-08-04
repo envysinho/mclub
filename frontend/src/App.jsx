@@ -60,7 +60,14 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchCacheRef = useRef({ clients: null, products: null });
   const { isDark, toggleTheme } = useTheme();
-  const { isAuthenticated, user, logout } = useAuth();
+  const {
+    isAuthenticated,
+    user,
+    impersonator,
+    isImpersonating,
+    logout,
+    stopImpersonation,
+  } = useAuth();
 
   const handleSearchChange = (value) => {
     setSearchQuery(value);
@@ -185,6 +192,10 @@ function AppContent() {
             showSearch
             searchValue={searchQuery}
             onSearchChange={handleSearchChange}
+            user={user}
+            impersonator={impersonator}
+            isImpersonating={isImpersonating}
+            onStopImpersonation={stopImpersonation}
           />
           <div className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4">{renderPage()}</div>
         </SidebarInset>

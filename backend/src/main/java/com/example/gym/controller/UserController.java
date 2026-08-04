@@ -2,6 +2,8 @@ package com.example.gym.controller;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,9 +18,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gym.dto.CreateUserRequest;
+import com.example.gym.dto.ImpersonationResponse;
 import com.example.gym.dto.UpdateUserRequest;
 import com.example.gym.dto.UpdateUserResponse;
 import com.example.gym.dto.UserResponse;
+import com.example.gym.entity.User;
 import com.example.gym.service.DeleteConfirmationService;
 import com.example.gym.service.UserService;
 import com.example.gym.security.JwtService;
@@ -29,6 +33,8 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
     private final DeleteConfirmationService deleteConfirmationService;
@@ -64,6 +70,24 @@ public class UserController {
                 ? jwtService.generateTokenForUserId(user.id())
                 : null;
         return new UpdateUserResponse(user, token);
+    }
+
+    @PostMapping("/{id}/impersonate")
+    public ImpersonationResponse impersonateUser(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
+        User actor = authenticatedUser(authentication);
+        User target = userService.impersonate(id, actor);
+        logger.info(
+                "SUDO impersonation started: actorId={} actorUsername={} targetId={} targetUsername={}",
+                actor.getId(),
+                actor.getUsername(),
+                target.getId(),
+                target.getUsername());
+        return new ImpersonationResponse(
+                UserResponse.from(target),
+                jwtService.generateImpersonationToken(target, actor),
+                UserResponse.from(actor));
     }
 
     @DeleteMapping("/{id}")

@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**")
                         .hasAnyRole("SUDO", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/users").hasAnyRole("SUDO", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/impersonate").hasRole("SUDO")
                         .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("SUDO", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("SUDO")
                         .requestMatchers(HttpMethod.GET, "/api/dashboard").authenticated()

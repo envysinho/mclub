@@ -35,20 +35,33 @@ public class JwtService {
         return generateTokenSubject(user.getId().toString());
     }
 
+    public String generateImpersonationToken(User user, User impersonator) {
+        return generateTokenSubject(user.getId().toString(), impersonator);
+    }
+
     public String generateTokenForUserId(Long userId) {
         return generateTokenSubject(userId.toString());
     }
 
     private String generateTokenSubject(String subject) {
+        return generateTokenSubject(subject, null);
+    }
+
+    private String generateTokenSubject(String subject, User impersonator) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(subject)
                 .issuedAt(now)
-                .expiration(expiry)
-                .signWith(secretKey)
-                .compact();
+                .expiration(expiry);
+
+        if (impersonator != null) {
+            builder.claim("impersonatedById", impersonator.getId());
+            builder.claim("impersonatedByUsername", impersonator.getUsername());
+        }
+
+        return builder.signWith(secretKey).compact();
     }
 
     public String extractUsername(String token) {

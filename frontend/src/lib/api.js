@@ -245,6 +245,14 @@ export async function updateUser(id, data, onUnauthorized) {
   );
 }
 
+export async function impersonateUser(id, onUnauthorized) {
+  return apiFetch(
+    `/api/users/${id}/impersonate`,
+    { method: "POST" },
+    onUnauthorized
+  );
+}
+
 export async function deleteUser(id, confirmationPassword, onUnauthorized) {
   return apiFetch(
     `/api/users/${id}`,

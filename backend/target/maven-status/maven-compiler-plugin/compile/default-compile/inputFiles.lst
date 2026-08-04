@@ -27,6 +27,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/DailyReportResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/DashboardResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ExpenseResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/ImpersonationResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/InventoryProductSummaryResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/InventoryResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginRequest.java

@@ -1,4 +1,4 @@
-import { Moon, Search, Sun, X } from "lucide-react";
+import { LogOut, Moon, Search, ShieldCheck, Sun, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 
@@ -9,7 +9,14 @@ function AppHeader({
   searchValue = "",
   onSearchChange,
   showSearch = false,
+  isImpersonating = false,
+  impersonator,
+  user,
+  onStopImpersonation,
 }) {
+  const impersonatorName = impersonator?.name || impersonator?.username || "sudo";
+  const userName = user?.name || user?.username || "usuario";
+
   return (
     <header className="sticky top-0 z-20 flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-nowrap sm:gap-3 sm:px-4">
       <SidebarTrigger className="-ml-1 md:hidden" />
@@ -45,6 +52,23 @@ function AppHeader({
       )}
 
       <div className="ml-auto flex items-center gap-2">
+        {isImpersonating && (
+          <div className="flex min-w-0 items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-200">
+            <ShieldCheck className="size-4 shrink-0" />
+            <span className="hidden max-w-64 truncate sm:inline">
+              {impersonatorName} como {userName}
+            </span>
+            <button
+              type="button"
+              onClick={onStopImpersonation}
+              aria-label="Volver a sudo"
+              title="Volver a sudo"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <LogOut className="size-3.5" />
+            </button>
+          </div>
+        )}
         <button
           type="button"
           role="switch"

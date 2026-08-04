@@ -112,6 +112,26 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
+    @Transactional(readOnly = true)
+    public User impersonate(Long id, User actor) {
+        if (actor.getRole() != Role.SUDO) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo SUDO puede entrar como otro usuario");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (actor.getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya estás usando esta cuenta");
+        }
+
+        if (!user.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No puedes entrar como un usuario desactivado");
+        }
+
+        return user;
+    }
+
     @Transactional
     public void delete(Long id, User actor) {
         if (actor.getRole() != Role.SUDO) {

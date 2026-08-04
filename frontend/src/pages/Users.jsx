@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Trash2, UserPlus } from "lucide-react";
+import { LogIn, Pencil, Trash2, UserPlus } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { createUser, deleteUser, listUsers, updateUser } from "@/lib/api";
+import { createUser, deleteUser, impersonateUser, listUsers, updateUser } from "@/lib/api";
 import { getRoleLabel } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ function displayUserName(user) {
 }
 
 function Users() {
-  const { logout, user: currentUser, updateCurrentUser } = useAuth();
+  const { beginImpersonation, logout, user: currentUser, updateCurrentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,9 +45,12 @@ function Users() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [impersonatingUserId, setImpersonatingUserId] = useState(null);
   const canManageAllUsers = currentUser?.role === "SUDO";
   const canCreateUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
   const canEditUser = (user) => canManageAllUsers || currentUser?.id === user.id;
+  const canImpersonateUser = (user) =>
+    canManageAllUsers && currentUser?.id !== user.id && user.enabled;
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -185,6 +188,19 @@ function Users() {
       setDeleteError(err instanceof Error ? err.message : "Error al eliminar usuario");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleImpersonateUser = async (user) => {
+    setError(null);
+    setImpersonatingUserId(user.id);
+    try {
+      const session = await impersonateUser(user.id, handleUnauthorized);
+      beginImpersonation(session);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al entrar como usuario");
+    } finally {
+      setImpersonatingUserId(null);
     }
   };
 
@@ -387,6 +403,18 @@ function Users() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
+                    {canImpersonateUser(user) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleImpersonateUser(user)}
+                        disabled={impersonatingUserId === user.id}
+                      >
+                        <LogIn className="size-4" />
+                        {impersonatingUserId === user.id ? "Entrando..." : "Entrar como"}
+                      </Button>
+                    )}
                     {canEditUser(user) && (
                       <Button
                         type="button"
