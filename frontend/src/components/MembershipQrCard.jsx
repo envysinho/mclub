@@ -27,6 +27,10 @@ function normalizeWhatsappPhone(phone) {
   return null;
 }
 
+function firstName(fullName) {
+  return String(fullName || "").trim().split(/\s+/)[0] || "usuario";
+}
+
 function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
   const qrRef = useRef(null);
   const [shareStatus, setShareStatus] = useState("");
@@ -41,11 +45,21 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
       return "";
     }
 
+    const clientFirstName = firstName(membership.clientName);
+
     return [
-      `Bienvenido! a M Club Gym, ${membership.clientName}.`,
-      `Tu membresía está vigente desde ${formatDate(membership.startDate)} hasta ${formatDate(membership.endDate)}.`,
-      `Aquí el link para que veas y bajes tu QR: ${downloadUrl}`,
-      "Este link solo dura 15 minutos.",
+      `Bienvenido(a) ${clientFirstName} M CLUB GYM.`,
+      "",
+      "Es un placer darte la bienvenida a nuestra comunidad.",
+      "",
+      "A partir de hoy, formas parte de un espacio diseñado para quienes buscan superarse, cuidar su bienestar y entrenar con excelencia. Nuestro compromiso es brindarte un ambiente de calidad y el acompañamiento necesario para que alcances tus objetivos.",
+      "",
+      "Gracias por confiar en M CLUB GYM. Estamos encantados de ser parte de tu transformación.",
+      "",
+      "Tu mejor versión comienza hoy.",
+      "",
+      `Obtén tu QR de acceso aquí: ${downloadUrl}`,
+      "Recuerda que este link solo dura 15 minutos.",
     ].join("\n");
   };
 
