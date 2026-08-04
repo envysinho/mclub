@@ -189,7 +189,7 @@ public class MembershipController {
                     }
 
                     main {
-                      width: min(100%, 408px);
+                      width: min(100%, 382px);
                       border: 1px solid var(--border);
                       border-radius: calc(var(--radius) + 4px);
                       padding: 24px;
@@ -201,7 +201,7 @@ public class MembershipController {
 
                     h1 {
                       margin: 0;
-                      font-size: clamp(26px, 7vw, 32px);
+                      font-size: clamp(20px, 6vw, 24px);
                       line-height: 1.12;
                       letter-spacing: 0;
                       font-weight: 700;
@@ -213,10 +213,10 @@ public class MembershipController {
                     }
 
                     p {
-                      margin: 10px auto 0;
+                      margin: 8px auto 0;
                       max-width: 310px;
                       color: var(--muted-foreground);
-                      font-size: 15px;
+                      font-size: 14px;
                       line-height: 1.5;
                     }
 
@@ -266,17 +266,18 @@ public class MembershipController {
                       display: grid;
                       justify-items: center;
                       gap: 8px;
-                      max-width: 210px;
-                      font-size: 14px;
+                      width: min(100%, 210px);
+                      font-size: 13px;
                       font-weight: 600;
                       line-height: 1.35;
+                      text-align: center;
                     }
 
                     .lock-icon {
                       display: grid;
                       place-items: center;
-                      width: 42px;
-                      height: 42px;
+                      width: 40px;
+                      height: 40px;
                       border: 1px solid var(--border);
                       border-radius: 999px;
                       background: var(--card);
@@ -299,7 +300,7 @@ public class MembershipController {
                       display: inline-flex;
                       align-items: center;
                       justify-content: center;
-                      min-height: 44px;
+                      min-height: 42px;
                       width: 100%;
                       border: 1px solid var(--primary);
                       border-radius: var(--radius);
@@ -307,7 +308,7 @@ public class MembershipController {
                       color: var(--primary-foreground);
                       text-decoration: none;
                       font-weight: 600;
-                      font-size: 14px;
+                      font-size: 13px;
                       font-family: inherit;
                       transition: opacity 120ms ease, transform 120ms ease;
                       cursor: pointer;
@@ -346,28 +347,26 @@ public class MembershipController {
                     }
 
                     .notice {
-                      display: none;
-                      margin: 14px 0 0;
+                      margin: 12px auto 0;
+                      width: min(100%, 280px);
                       border: 1px solid var(--border);
                       border-radius: var(--radius);
-                      padding: 12px;
+                      padding: 10px 12px;
                       background: var(--muted);
                       color: var(--muted-foreground);
-                      font-size: 13px;
+                      font-size: 12px;
                       line-height: 1.45;
-                    }
-
-                    .notice[data-visible="true"] {
-                      display: block;
+                      text-align: center;
                     }
 
                     @media (max-width: 420px) {
                       main {
                         padding: 20px;
+                        width: min(100%, 360px);
                       }
 
                       .qr-frame {
-                        width: min(100%, 300px);
+                        width: min(100%, 314px);
                         padding: 14px;
                       }
 
@@ -399,14 +398,13 @@ public class MembershipController {
                       <a class="secondary" href="{{RULES_URL}}">Lee las reglas</a>
                       <button id="confirm-button" type="button" disabled>Entendido</button>
                     </div>
-                    <p class="notice" id="capture-notice">Recuerda tomar una captura porque este link solo dura 15 minutos.</p>
+                    <p class="notice">Este link solo dura 15 minutos. Toma una captura de tu QR.</p>
                   </main>
                   <script>
                     const rulesKey = "mclub-rules-{{TOKEN}}";
                     const qrCard = document.getElementById("qr-card");
                     const qrInstruction = document.getElementById("qr-instruction");
                     const confirmButton = document.getElementById("confirm-button");
-                    const captureNotice = document.getElementById("capture-notice");
                     const rulesAccepted = localStorage.getItem(rulesKey) === "accepted";
 
                     if (rulesAccepted) {
@@ -419,12 +417,6 @@ public class MembershipController {
                       }
                     }
 
-                    confirmButton?.addEventListener("click", () => {
-                      if (!rulesAccepted) {
-                        return;
-                      }
-                      captureNotice?.setAttribute("data-visible", "true");
-                    });
                   </script>
                 </body>
                 </html>
