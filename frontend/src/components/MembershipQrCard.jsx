@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/constants";
 
 const QR_IMAGE_SIZE = 240;
+const QR_CODE_SIZE = 208;
+const QR_IMAGE_PADDING = (QR_IMAGE_SIZE - QR_CODE_SIZE) / 2;
 
 function normalizeWhatsappPhone(phone) {
   if (!phone) {
@@ -42,7 +44,7 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
     return [
       `Bienvenido! a M Club Gym, ${membership.clientName}.`,
       `Tu membresía está vigente desde ${formatDate(membership.startDate)} hasta ${formatDate(membership.endDate)}.`,
-      `Aquí el link para que bajes tu QR: ${downloadUrl}`,
+      `Aquí el link para que veas y bajes tu QR: ${downloadUrl}`,
       "Este link solo dura 15 minutos.",
     ].join("\n");
   };
@@ -64,22 +66,8 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
 
     const clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    clone.setAttribute("width", String(QR_IMAGE_SIZE));
-    clone.setAttribute("height", String(QR_IMAGE_SIZE));
-    clone.setAttribute("viewBox", `0 0 ${QR_IMAGE_SIZE} ${QR_IMAGE_SIZE}`);
-
-    const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    background.setAttribute("width", "100%");
-    background.setAttribute("height", "100%");
-    background.setAttribute("fill", "#ffffff");
-    clone.insertBefore(background, clone.firstChild);
-
-    const originalGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    originalGroup.setAttribute("transform", "translate(16 16)");
-    while (background.nextSibling) {
-      originalGroup.appendChild(background.nextSibling);
-    }
-    clone.appendChild(originalGroup);
+    clone.setAttribute("width", String(QR_CODE_SIZE));
+    clone.setAttribute("height", String(QR_CODE_SIZE));
 
     const serializer = new XMLSerializer();
     return serializer.serializeToString(clone);
@@ -113,7 +101,7 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
       }
       context.fillStyle = "#ffffff";
       context.fillRect(0, 0, QR_IMAGE_SIZE, QR_IMAGE_SIZE);
-      context.drawImage(image, 0, 0, QR_IMAGE_SIZE, QR_IMAGE_SIZE);
+      context.drawImage(image, QR_IMAGE_PADDING, QR_IMAGE_PADDING, QR_CODE_SIZE, QR_CODE_SIZE);
 
       const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!pngBlob) {
@@ -219,10 +207,10 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
         <div className="flex size-60 shrink-0 items-center justify-center rounded-2xl bg-white p-4 shadow-sm ring-1 ring-border">
           <QRCode
             value={qrPayload}
-            size={208}
+            size={QR_CODE_SIZE}
             bgColor="#ffffff"
             fgColor="#0a0d12"
-            style={{ height: "208px", width: "208px" }}
+            style={{ height: `${QR_CODE_SIZE}px`, width: `${QR_CODE_SIZE}px` }}
           />
         </div>
       </div>

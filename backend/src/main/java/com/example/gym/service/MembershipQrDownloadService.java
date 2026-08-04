@@ -47,9 +47,10 @@ public class MembershipQrDownloadService {
 
         String downloadToken = UUID.randomUUID().toString().replace("-", "");
         Instant expiresAt = now.plus(DOWNLOAD_TTL);
+        String clientName = membership.getClient().getFirstName();
         qrDownloads.put(
                 downloadToken,
-                new QrDownload(imageBytes, sanitizeFilename(request.filename(), membershipId), expiresAt));
+                new QrDownload(imageBytes, sanitizeFilename(request.filename(), membershipId), clientName.trim(), expiresAt));
 
         String downloadUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/membership-qr/")
@@ -124,6 +125,6 @@ public class MembershipQrDownloadService {
         qrDownloads.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
     }
 
-    public record QrDownload(byte[] imageBytes, String filename, Instant expiresAt) {
+    public record QrDownload(byte[] imageBytes, String filename, String clientName, Instant expiresAt) {
     }
 }
