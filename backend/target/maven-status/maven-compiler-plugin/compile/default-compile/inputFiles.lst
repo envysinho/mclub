@@ -7,6 +7,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/ClientController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/DashboardController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/ExpenseController.java
+/home/envy/gym/backend/src/main/java/com/example/gym/controller/HealthController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/InventoryController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MembershipController.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/MovementController.java
