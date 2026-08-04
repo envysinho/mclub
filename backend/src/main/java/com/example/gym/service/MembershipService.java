@@ -1,8 +1,8 @@
 package com.example.gym.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,9 +11,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.gym.dto.AssignMembershipRequest;
 import com.example.gym.dto.CreateMembershipPlanRequest;
+import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
+import com.example.gym.dto.MembershipValidationResponse;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
-import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
 import com.example.gym.entity.MembershipPlan;
 import com.example.gym.entity.Movement;
@@ -22,7 +23,6 @@ import com.example.gym.model.MembershipStatus;
 import com.example.gym.model.MovementType;
 import com.example.gym.model.PaymentMethod;
 import com.example.gym.repository.ClientMembershipRepository;
-import com.example.gym.repository.ClientRepository;
 import com.example.gym.repository.MembershipPlanRepository;
 import com.example.gym.repository.MovementRepository;
 
@@ -31,21 +31,18 @@ public class MembershipService {
 
     private final MembershipPlanRepository membershipPlanRepository;
     private final ClientMembershipRepository clientMembershipRepository;
-    private final ClientRepository clientRepository;
     private final MovementRepository movementRepository;
-    private final MembershipStatusService membershipStatusService;
+    private final MembershipValidationService membershipValidationService;
 
     public MembershipService(
             MembershipPlanRepository membershipPlanRepository,
             ClientMembershipRepository clientMembershipRepository,
-            ClientRepository clientRepository,
             MovementRepository movementRepository,
-            MembershipStatusService membershipStatusService) {
+            MembershipValidationService membershipValidationService) {
         this.membershipPlanRepository = membershipPlanRepository;
         this.clientMembershipRepository = clientMembershipRepository;
-        this.clientRepository = clientRepository;
         this.movementRepository = movementRepository;
-        this.membershipStatusService = membershipStatusService;
+        this.membershipValidationService = membershipValidationService;
     }
 
     @Transactional(readOnly = true)
@@ -76,48 +73,40 @@ public class MembershipService {
     }
 
     @Transactional
-    public ClientMembership assignMembership(AssignMembershipRequest request, User createdBy) {
-        membershipStatusService.refreshExpiredMemberships();
-
-        Client client = clientRepository.findById(request.clientId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado"));
-        MembershipPlan plan = getPlanOrThrow(request.planId());
-
-        clientMembershipRepository.findFirstByClientIdAndStatusOrderByEndDateDesc(
-                client.getId(), MembershipStatus.ACTIVE).ifPresent(existing -> {
-            existing.setStatus(MembershipStatus.CANCELLED);
-            clientMembershipRepository.save(existing);
-        });
-
-        LocalDate startDate = request.startDate() != null ? request.startDate() : LocalDate.now();
-        LocalDate endDate = request.endDate() != null ? request.endDate() : startDate.plusDays(plan.getDurationDays());
-        if (endDate.isBefore(startDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de fin no puede ser anterior al inicio");
-        }
-
-        boolean hasPreviousMembership = clientMembershipRepository.countByClientId(client.getId()) > 0;
+    public MembershipAssignmentResponse assignMembership(AssignMembershipRequest request, User createdBy) {
+        MembershipValidationService.MembershipAssignmentContext context = membershipValidationService.validate(request);
 
         ClientMembership membership = new ClientMembership();
-        membership.setClient(client);
-        membership.setPlan(plan);
-        membership.setStartDate(startDate);
-        membership.setEndDate(endDate);
+        membership.setClient(context.client());
+        membership.setPlan(context.plan());
+        membership.setStartDate(context.startDate());
+        membership.setEndDate(context.endDate());
         membership.setStatus(MembershipStatus.ACTIVE);
+        membership.setAccessToken(generateAccessToken());
         ClientMembership saved = clientMembershipRepository.save(membership);
 
         Movement movement = new Movement();
-        movement.setType(hasPreviousMembership ? MovementType.MEMBERSHIP_RENEWAL : MovementType.MEMBERSHIP_SALE);
-        movement.setDescription("Membresía " + plan.getName());
-        movement.setAmount(plan.getPrice());
+        movement.setType(context.hasPreviousMembership() ? MovementType.MEMBERSHIP_RENEWAL : MovementType.MEMBERSHIP_SALE);
+        movement.setDescription("Membresía " + context.plan().getName());
+        movement.setAmount(context.plan().getPrice());
         movement.setQuantity(1);
-        movement.setClient(client);
+        movement.setClient(context.client());
         movement.setCreatedBy(createdBy);
         movement.setReferenceId(saved.getId());
         movement.setPaymentMethod(request.paymentMethod());
-        setMixedPaymentAmounts(movement, plan.getPrice(), request.paymentMethod(), request.yapeAmount(), request.cashAmount());
+        setMixedPaymentAmounts(movement, context.plan().getPrice(), request.paymentMethod(), request.yapeAmount(), request.cashAmount());
         movementRepository.save(movement);
 
-        return saved;
+        return MembershipAssignmentResponse.from(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public MembershipValidationResponse validateMembershipToken(String token) {
+        return membershipValidationService.validateToken(token);
+    }
+
+    private String generateAccessToken() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     private void setMixedPaymentAmounts(

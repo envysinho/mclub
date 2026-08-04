@@ -99,6 +99,13 @@ function normalizeWhatsappPhone(phone) {
   return null;
 }
 
+function formatReminderDate(dateString) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("es-PE", {
+    dateStyle: "medium",
+  }).format(new Date(dateString));
+}
+
 function buildWhatsappReminderUrl(client) {
   const phone = normalizeWhatsappPhone(client.phone);
   const membership = client.activeMembership;
@@ -107,13 +114,15 @@ function buildWhatsappReminderUrl(client) {
     return null;
   }
 
-  const message = `Hola ${fullName(client)}, te escribimos para recordarte que tu membresía ${
-    membership.planName
-  } está próxima a vencer el ${formatDate(
-    membership.endDate
-  )}. Responde a este mensaje o acercarte al gimnasio para renovarla.`;
+  const message = `Hola ${fullName(client)}. Le recordamos que su mensualidad está próxima a vencer el ${formatReminderDate(membership.endDate)}. Le invitamos a renovar su membresía para continuar entrenando sin interrupciones.
 
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+Gracias por confiar en nosotros. ¡Lo esperamos!
+
+M CLUB GYM
+Crea tu mejor versión.`;
+  const params = new URLSearchParams({ text: message });
+
+  return `https://wa.me/${phone}?${params.toString()}`;
 }
 
 function Clients({ module = "clients", searchQuery = "" }) {

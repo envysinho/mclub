@@ -121,6 +121,22 @@ export async function assignMembership(data, onUnauthorized) {
   );
 }
 
+export async function createMembershipQrDownloadLink(membershipId, data, onUnauthorized) {
+  return apiFetch(
+    `/api/memberships/${membershipId}/qr-download-links`,
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
+export async function validateMembershipToken(data, onUnauthorized) {
+  return apiFetch(
+    "/api/memberships/validate",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
 export async function listProducts(onUnauthorized) {
   return apiFetch("/api/products", {}, onUnauthorized);
 }

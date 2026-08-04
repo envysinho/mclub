@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import CashRegister from "@/pages/CashRegister";
 import Clients from "@/pages/Clients";
 import Inventory from "@/pages/Inventory";
+import MembershipValidation from "@/pages/MembershipValidation";
 import Products from "@/pages/Products";
 import Reports from "@/pages/Reports";
 import Users from "@/pages/Users";
@@ -25,6 +26,9 @@ const PAGE_META = {
   },
   memberships: {
     title: "Membresías",
+  },
+  validation: {
+    title: "Validación",
   },
   products: {
     title: "Productos",
@@ -142,6 +146,8 @@ function AppContent() {
         return <Clients key="clients" module="clients" searchQuery={activeSearchQuery} />;
       case "memberships":
         return <Clients key="memberships" module="memberships" />;
+      case "validation":
+        return <MembershipValidation />;
       case "products":
         return <Products searchQuery={activeSearchQuery} />;
       case "inventory":

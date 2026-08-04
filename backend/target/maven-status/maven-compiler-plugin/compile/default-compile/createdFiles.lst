@@ -12,12 +12,15 @@ com/example/gym/dto/ClientResponse.class
 com/example/gym/service/ReportService.class
 com/example/gym/service/InventoryService.class
 com/example/gym/service/ClientService.class
+com/example/gym/service/MembershipValidationService.class
 com/example/gym/dto/ProductSaleRequest.class
 com/example/gym/config/GlobalExceptionHandler.class
 com/example/gym/repository/UserRepository.class
 com/example/gym/service/UserService.class
+com/example/gym/dto/ValidateMembershipTokenRequest.class
 com/example/gym/dto/DailyReportResponse.class
 com/example/gym/GymApplication.class
+com/example/gym/dto/MembershipAssignmentResponse.class
 com/example/gym/repository/ClientRepository.class
 com/example/gym/security/CustomUserDetailsService.class
 com/example/gym/security/JwtAuthenticationFilter.class
@@ -30,6 +33,7 @@ com/example/gym/entity/ClientMembership.class
 com/example/gym/model/StockMovementType.class
 com/example/gym/dto/InventoryProductSummaryResponse.class
 com/example/gym/controller/MovementController.class
+com/example/gym/service/MembershipValidationService$MembershipAssignmentContext.class
 com/example/gym/model/MembershipStatus.class
 com/example/gym/repository/MembershipPlanRepository.class
 com/example/gym/dto/ProductResponse.class
@@ -73,6 +77,7 @@ com/example/gym/dto/DashboardResponse.class
 com/example/gym/dto/UpdateMembershipPlanRequest.class
 com/example/gym/repository/ClientMembershipRepository.class
 com/example/gym/dto/ExpenseResponse.class
+com/example/gym/dto/MembershipValidationResponse.class
 com/example/gym/dto/UpdateProductRequest.class
 com/example/gym/controller/InventoryController.class
 com/example/gym/dto/CreateExpenseRequest.class

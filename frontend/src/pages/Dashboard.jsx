@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Package, ShoppingCart, Trash2, TrendingUp, Users } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
+import MembershipQrCard from "@/components/MembershipQrCard";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import {
   assignMembership,
+  createMembershipQrDownloadLink,
   createClient,
   deleteMovement,
   getDashboard,
@@ -177,6 +179,8 @@ function Dashboard() {
   const [isSaleOptionsLoading, setIsSaleOptionsLoading] = useState(false);
   const [saleOptionsLoaded, setSaleOptionsLoaded] = useState(false);
   const [isSaleSubmitting, setIsSaleSubmitting] = useState(false);
+  const [membershipQr, setMembershipQr] = useState(null);
+  const [showMembershipQrSheet, setShowMembershipQrSheet] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -367,7 +371,7 @@ function Dashboard() {
         if (!clientId) {
           throw new Error("Selecciona o crea un cliente para vender una membresía");
         }
-        await assignMembership(
+        const assignedMembership = await assignMembership(
           {
             clientId,
             planId: Number(saleForm.planId),
@@ -378,6 +382,17 @@ function Dashboard() {
           },
           handleUnauthorized
         );
+        const membershipQrData = {
+          ...assignedMembership,
+          accessToken: assignedMembership?.accessToken ?? "",
+          qrPayload: assignedMembership?.qrPayload || assignedMembership?.accessToken || "",
+          valid: assignedMembership?.valid ?? true,
+        };
+        if (!membershipQrData.qrPayload) {
+          throw new Error("La membresía se registró, pero no se recibió el token para generar el QR");
+        }
+        setMembershipQr(membershipQrData);
+        setShowMembershipQrSheet(true);
       } else {
         await sellProduct(
           {
@@ -398,6 +413,14 @@ function Dashboard() {
       setSaleError(err instanceof Error ? err.message : "Error al registrar venta");
     } finally {
       setIsSaleSubmitting(false);
+    }
+  };
+
+  const copyMembershipToken = async (value) => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // ignore clipboard failures
     }
   };
 
@@ -454,6 +477,41 @@ function Dashboard() {
         }}
         onConfirm={(password) => handleDeleteMovement(deleteTarget, password)}
       />
+
+      <Sheet
+        open={showMembershipQrSheet}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowMembershipQrSheet(false);
+            setMembershipQr(null);
+          }
+        }}
+      >
+        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader className="border-b pr-12">
+            <SheetTitle>QR de membresía</SheetTitle>
+            <SheetDescription>
+              Comparte este QR con el usuario para validar su acceso en la puerta.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="px-4 pb-4 pt-1">
+            <MembershipQrCard
+              membership={membershipQr}
+              onCreateQrLink={(membershipId, data) =>
+                createMembershipQrDownloadLink(membershipId, data, handleUnauthorized)
+              }
+              onCopyToken={copyMembershipToken}
+            />
+
+            <div className="mt-4 flex justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowMembershipQrSheet(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <PageCard>
         <Sheet

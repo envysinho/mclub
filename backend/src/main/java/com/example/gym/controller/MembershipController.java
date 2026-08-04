@@ -3,7 +3,10 @@ package com.example.gym.controller;
 import java.util.List;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,10 +19,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gym.dto.AssignMembershipRequest;
+import com.example.gym.dto.CreateMembershipQrLinkRequest;
 import com.example.gym.dto.CreateMembershipPlanRequest;
+import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
+import com.example.gym.dto.MembershipQrLinkResponse;
+import com.example.gym.dto.MembershipValidationResponse;
+import com.example.gym.dto.ValidateMembershipTokenRequest;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
 import com.example.gym.security.UserPrincipal;
+import com.example.gym.service.MembershipQrDownloadService;
 import com.example.gym.service.MembershipService;
 import com.example.gym.service.DeleteConfirmationService;
 
@@ -31,10 +40,15 @@ public class MembershipController {
 
     private final MembershipService membershipService;
     private final DeleteConfirmationService deleteConfirmationService;
+    private final MembershipQrDownloadService membershipQrDownloadService;
 
-    public MembershipController(MembershipService membershipService, DeleteConfirmationService deleteConfirmationService) {
+    public MembershipController(
+            MembershipService membershipService,
+            DeleteConfirmationService deleteConfirmationService,
+            MembershipQrDownloadService membershipQrDownloadService) {
         this.membershipService = membershipService;
         this.deleteConfirmationService = deleteConfirmationService;
+        this.membershipQrDownloadService = membershipQrDownloadService;
     }
 
     @GetMapping("/membership-plans")
@@ -67,8 +81,30 @@ public class MembershipController {
 
     @PostMapping("/memberships")
     @ResponseStatus(HttpStatus.CREATED)
-    public void assignMembership(@Valid @RequestBody AssignMembershipRequest request, Authentication authentication) {
-        membershipService.assignMembership(request, authenticatedUser(authentication));
+    public MembershipAssignmentResponse assignMembership(@Valid @RequestBody AssignMembershipRequest request, Authentication authentication) {
+        return membershipService.assignMembership(request, authenticatedUser(authentication));
+    }
+
+    @PostMapping("/memberships/validate")
+    public MembershipValidationResponse validateToken(@Valid @RequestBody ValidateMembershipTokenRequest request) {
+        return membershipService.validateMembershipToken(request.token());
+    }
+
+    @PostMapping("/memberships/{membershipId}/qr-download-links")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MembershipQrLinkResponse createQrDownloadLink(
+            @PathVariable("membershipId") Long membershipId,
+            @Valid @RequestBody CreateMembershipQrLinkRequest request) {
+        return membershipQrDownloadService.createDownloadLink(membershipId, request);
+    }
+
+    @GetMapping(value = "/membership-qr/{downloadToken}", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> downloadQr(@PathVariable("downloadToken") String downloadToken) {
+        MembershipQrDownloadService.QrDownload download = membershipQrDownloadService.getDownload(downloadToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + download.filename() + "\"")
+                .contentType(MediaType.IMAGE_PNG)
+                .body(download.imageBytes());
     }
 
     private com.example.gym.entity.User authenticatedUser(Authentication authentication) {

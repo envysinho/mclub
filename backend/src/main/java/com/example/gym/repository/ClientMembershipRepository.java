@@ -11,6 +11,7 @@ import com.example.gym.model.MembershipStatus;
 
 public interface ClientMembershipRepository extends JpaRepository<ClientMembership, Long> {
     Optional<ClientMembership> findFirstByClientIdAndStatusOrderByEndDateDesc(Long clientId, MembershipStatus status);
+    Optional<ClientMembership> findByAccessToken(String accessToken);
     long countByStatus(MembershipStatus status);
     long countByClientId(Long clientId);
     List<ClientMembership> findByStatusAndEndDateBefore(MembershipStatus status, LocalDate date);

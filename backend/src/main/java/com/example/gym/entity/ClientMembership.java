@@ -45,6 +45,9 @@ public class ClientMembership {
     @Column(nullable = false)
     private MembershipStatus status = MembershipStatus.ACTIVE;
 
+    @Column(name = "access_token")
+    private String accessToken;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -91,6 +94,14 @@ public class ClientMembership {
 
     public void setStatus(MembershipStatus status) {
         this.status = status;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
     }
 
     public Instant getCreatedAt() {

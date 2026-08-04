@@ -22,6 +22,7 @@ public record ClientResponse(
                 : new ActiveMembershipResponse(
                         activeMembership.getId(),
                         activeMembership.getPlan().getName(),
+                        activeMembership.getAccessToken(),
                         // start at start of day in system zone
                         activeMembership.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant(),
                         // end at 23:59 of the end date in system zone

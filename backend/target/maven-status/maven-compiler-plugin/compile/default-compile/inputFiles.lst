@@ -20,6 +20,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateClientRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateExpenseRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateMembershipPlanRequest.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateMembershipQrLinkRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateProductRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateStockMovementRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/CreateUserRequest.java
@@ -30,7 +31,10 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/InventoryResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/LoginResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/MembershipAssignmentResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/MembershipPlanResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/MembershipQrLinkResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/MembershipValidationResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/MonthlyReportResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/MovementResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/ProductResponse.java
@@ -43,6 +47,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateUserRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateUserResponse.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UserResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/ValidateMembershipTokenRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/CashRegisterDay.java
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/Client.java
 /home/envy/gym/backend/src/main/java/com/example/gym/entity/ClientMembership.java
@@ -77,8 +82,10 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/service/DeleteConfirmationService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ExpenseService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/InventoryService.java
+/home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipQrDownloadService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipStatusService.java
+/home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipValidationService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MovementService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ProductService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ReportService.java
