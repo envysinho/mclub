@@ -175,13 +175,13 @@ function Users() {
     }
   };
 
-  const handleDeleteUser = async (confirmationPassword) => {
+  const handleDeleteUser = async () => {
     if (!deleteTarget) return;
 
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await deleteUser(deleteTarget.id, confirmationPassword, handleUnauthorized);
+      await deleteUser(deleteTarget.id, handleUnauthorized);
       setDeleteTarget(null);
       await loadUsers();
     } catch (err) {
@@ -454,7 +454,7 @@ function Users() {
       <DeleteConfirmationDialog
         open={Boolean(deleteTarget)}
         title="Eliminar usuario"
-        description={`Confirma tu contraseña para eliminar a ${
+        description={`Esta acción eliminará a ${
           deleteTarget ? displayUserName(deleteTarget) : "este usuario"
         }.`}
         error={deleteError}

@@ -447,13 +447,13 @@ function Dashboard() {
     });
   };
 
-  const handleDeleteMovement = async (movement, confirmationPassword) => {
+  const handleDeleteMovement = async (movement) => {
     if (!movement) return;
 
     setDeleteError(null);
     setIsDeleting(true);
     try {
-      await deleteMovement(movement.id, confirmationPassword, handleUnauthorized);
+      await deleteMovement(movement.id, handleUnauthorized);
       setDeleteTarget(null);
       await loadDashboard();
     } catch (err) {
@@ -468,14 +468,14 @@ function Dashboard() {
       <DeleteConfirmationDialog
         open={Boolean(deleteTarget)}
         title="Eliminar movimiento"
-        description={`Confirma tu contraseña para eliminar "${deleteTarget?.description ?? "este movimiento"}".`}
+        description={`Esta acción eliminará "${deleteTarget?.description ?? "este movimiento"}".`}
         error={deleteError}
         isSubmitting={isDeleting}
         onCancel={() => {
           setDeleteTarget(null);
           setDeleteError(null);
         }}
-        onConfirm={(password) => handleDeleteMovement(deleteTarget, password)}
+        onConfirm={() => handleDeleteMovement(deleteTarget)}
       />
 
       <Sheet

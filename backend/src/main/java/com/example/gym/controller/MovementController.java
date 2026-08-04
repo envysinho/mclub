@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.gym.dto.MovementResponse;
 import com.example.gym.dto.ProductSaleRequest;
 import com.example.gym.security.UserPrincipal;
-import com.example.gym.service.DeleteConfirmationService;
 import com.example.gym.service.MovementService;
 import com.example.gym.service.ProductService;
 
@@ -30,15 +28,12 @@ public class MovementController {
 
     private final MovementService movementService;
     private final ProductService productService;
-    private final DeleteConfirmationService deleteConfirmationService;
 
     public MovementController(
             MovementService movementService,
-            ProductService productService,
-            DeleteConfirmationService deleteConfirmationService) {
+            ProductService productService) {
         this.movementService = movementService;
         this.productService = productService;
-        this.deleteConfirmationService = deleteConfirmationService;
     }
 
     @GetMapping
@@ -57,10 +52,7 @@ public class MovementController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMovement(
-            @PathVariable("id") Long id,
-            @RequestHeader(name = "X-Confirm-Password", required = false) String confirmationPassword,
-            Authentication authentication) {
-        deleteConfirmationService.verify(authentication, confirmationPassword);
+            @PathVariable("id") Long id) {
         movementService.delete(id);
     }
 

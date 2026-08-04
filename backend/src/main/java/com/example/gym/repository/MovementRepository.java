@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.example.gym.entity.Movement;
+import com.example.gym.model.MovementType;
 
 public interface MovementRepository extends JpaRepository<Movement, Long> {
     List<Movement> findTop20ByOrderByCreatedAtDesc();
@@ -36,4 +37,10 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
     @Modifying
     @Query("UPDATE Movement m SET m.client = null WHERE m.client.id = :clientId")
     void clearClientReferences(@Param("clientId") Long clientId);
+
+    @Modifying
+    @Query("DELETE FROM Movement m WHERE m.type = :type AND m.referenceId = :referenceId")
+    void deleteByTypeAndReferenceId(
+            @Param("type") MovementType type,
+            @Param("referenceId") Long referenceId);
 }

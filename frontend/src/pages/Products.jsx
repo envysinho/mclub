@@ -153,11 +153,11 @@ function Products({ searchQuery = "" }) {
     }
   };
 
-  const handleDelete = async (product, confirmationPassword) => {
+  const handleDelete = async (product) => {
     setDeleteError(null);
     setIsDeleting(true);
     try {
-      await deleteProduct(product.id, confirmationPassword, handleUnauthorized);
+      await deleteProduct(product.id, handleUnauthorized);
       setDeleteTarget(null);
       await loadData();
     } catch (err) {
@@ -270,14 +270,14 @@ function Products({ searchQuery = "" }) {
         <DeleteConfirmationDialog
           open={Boolean(deleteTarget)}
           title="Eliminar producto"
-          description={`Confirma tu contraseña para eliminar "${deleteTarget?.name}".`}
+          description={`Esta acción eliminará "${deleteTarget?.name}" y sus registros relacionados de inventario, ventas y caja.`}
           error={deleteError}
           isSubmitting={isDeleting}
           onCancel={() => {
             setDeleteTarget(null);
             setDeleteError(null);
           }}
-          onConfirm={(password) => handleDelete(deleteTarget, password)}
+          onConfirm={() => handleDelete(deleteTarget)}
         />
 
         <div className="space-y-4">

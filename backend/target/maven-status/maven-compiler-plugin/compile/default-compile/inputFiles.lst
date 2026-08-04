@@ -1,5 +1,4 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/GymApplication.java
-/home/envy/gym/backend/src/main/java/com/example/gym/config/DataInitializer.java
 /home/envy/gym/backend/src/main/java/com/example/gym/config/GlobalExceptionHandler.java
 /home/envy/gym/backend/src/main/java/com/example/gym/config/SecurityConfig.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/AuthController.java
@@ -81,7 +80,6 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/service/CashRegisterService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ClientService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/DashboardService.java
-/home/envy/gym/backend/src/main/java/com/example/gym/service/DeleteConfirmationService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/ExpenseService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/InventoryService.java
 /home/envy/gym/backend/src/main/java/com/example/gym/service/MembershipQrDownloadService.java

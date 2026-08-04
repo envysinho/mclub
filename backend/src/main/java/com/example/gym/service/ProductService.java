@@ -18,24 +18,32 @@ import com.example.gym.entity.Product;
 import com.example.gym.entity.User;
 import com.example.gym.model.MovementType;
 import com.example.gym.model.PaymentMethod;
+import com.example.gym.repository.ExpenseRepository;
 import com.example.gym.repository.MovementRepository;
 import com.example.gym.repository.ProductRepository;
+import com.example.gym.repository.StockMovementRepository;
 
 @Service
 public class ProductService {
 
     private final ProductRepository productRepository;
     private final MovementRepository movementRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final ExpenseRepository expenseRepository;
     private final ClientService clientService;
     private final InventoryService inventoryService;
 
     public ProductService(
             ProductRepository productRepository,
             MovementRepository movementRepository,
+            StockMovementRepository stockMovementRepository,
+            ExpenseRepository expenseRepository,
             ClientService clientService,
             InventoryService inventoryService) {
         this.productRepository = productRepository;
         this.movementRepository = movementRepository;
+        this.stockMovementRepository = stockMovementRepository;
+        this.expenseRepository = expenseRepository;
         this.clientService = clientService;
         this.inventoryService = inventoryService;
     }
@@ -89,6 +97,13 @@ public class ProductService {
     @Transactional
     public void delete(Long id) {
         Product product = getProductOrThrow(id);
+        List<Long> stockMovementIds = stockMovementRepository.findIdsByProductId(id);
+        if (!stockMovementIds.isEmpty()) {
+            expenseRepository.deleteByStockMovementIdIn(stockMovementIds);
+        }
+        expenseRepository.deleteByProductId(id);
+        stockMovementRepository.deleteByProductId(id);
+        movementRepository.deleteByTypeAndReferenceId(MovementType.PRODUCT_SALE, id);
         productRepository.delete(product);
     }
 

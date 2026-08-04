@@ -70,7 +70,7 @@ npm install
 npm run dev
 ```
 
-Credenciales por defecto: `admin` / `admin123`
+La aplicación no crea credenciales por defecto. Crea el primer usuario administrador directamente en la base de datos antes de iniciar sesión.
 
 ## Despliegue en nube con Supabase
 

@@ -303,11 +303,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
     }
   };
 
-  const handleDeleteClient = async (client, confirmationPassword) => {
+  const handleDeleteClient = async (client) => {
     setDeleteError(null);
     setIsDeleting(true);
     try {
-      await deleteClient(client.id, confirmationPassword, handleUnauthorized);
+      await deleteClient(client.id, handleUnauthorized);
       setDeleteTarget(null);
       await loadData();
     } catch (err) {
@@ -351,11 +351,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
     }
   };
 
-  const handleDeletePlan = async (plan, confirmationPassword) => {
+  const handleDeletePlan = async (plan) => {
     setDeleteError(null);
     setIsDeleting(true);
     try {
-      await deleteMembershipPlan(plan.id, confirmationPassword, handleUnauthorized);
+      await deleteMembershipPlan(plan.id, handleUnauthorized);
       setDeleteTarget(null);
       await loadData();
     } catch (err) {
@@ -492,8 +492,8 @@ function Clients({ module = "clients", searchQuery = "" }) {
           }
           description={
             deleteTarget?.type === "client"
-              ? `Confirma tu contraseña para eliminar a ${fullName(deleteTarget.item)}.`
-              : `Confirma tu contraseña para eliminar el plan "${deleteTarget?.item?.name}".`
+              ? `Esta acción eliminará a ${fullName(deleteTarget.item)}.`
+              : `Esta acción eliminará el plan "${deleteTarget?.item?.name}".`
           }
           error={deleteError}
           isSubmitting={isDeleting}
@@ -501,11 +501,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
             setDeleteTarget(null);
             setDeleteError(null);
           }}
-          onConfirm={(password) => {
+          onConfirm={() => {
             if (deleteTarget?.type === "client") {
-              handleDeleteClient(deleteTarget.item, password);
+              handleDeleteClient(deleteTarget.item);
             } else if (deleteTarget?.type === "plan") {
-              handleDeletePlan(deleteTarget.item, password);
+              handleDeletePlan(deleteTarget.item);
             }
           }}
         />
