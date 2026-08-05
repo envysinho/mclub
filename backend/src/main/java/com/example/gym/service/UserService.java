@@ -42,6 +42,18 @@ public class UserService {
         return user;
     }
 
+    @Transactional
+    public void seedAdminIfMissing(String username, String password) {
+        seedUserIfMissing(username, password, username, Role.ADMIN);
+    }
+
+    @Transactional
+    public void seedDefaultUsers() {
+        seedUserIfMissing("sudo", "sudo123", "Usuario Sudo", Role.SUDO);
+        seedUserIfMissing("admin", "admin123", "Administrador", Role.ADMIN);
+        seedUserIfMissing("user", "user123", "Recepcionista", Role.USER);
+    }
+
     @Transactional(readOnly = true)
     public List<UserResponse> findAll(User actor) {
         List<User> users = actor.getRole() == Role.SUDO
@@ -122,7 +134,7 @@ public class UserService {
 
     @Transactional
     public void delete(Long id, User actor) {
-        if (actor.getRole() != Role.SUDO) {
+        if (actor.getRole() != Role.SUDO && actor.getRole() != Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para eliminar usuarios");
         }
 
@@ -131,6 +143,26 @@ public class UserService {
 
         ensureCanDelete(user);
         userRepository.delete(user);
+    }
+
+    private void seedUserIfMissing(String username, String password, String name, Role role) {
+        var existing = userRepository.findByUsername(username);
+        if (existing.isPresent()) {
+            User user = existing.get();
+            if (user.getName() == null || user.getName().isBlank() || user.getName().equals(user.getUsername())) {
+                user.setName(name);
+                userRepository.save(user);
+            }
+            return;
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setName(name);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setEnabled(true);
+        userRepository.save(user);
     }
 
     private void ensureActiveSudoWillRemain(User user, Role nextRole, Boolean nextEnabled) {

@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -68,6 +76,8 @@ const EMPTY_SALE_FORM = {
   cashAmount: "",
   client: EMPTY_SALE_CLIENT,
 };
+
+const RECENT_MOVEMENTS_PAGE_SIZE = 9;
 
 function formatDateInput(date) {
   const year = date.getFullYear();
@@ -184,8 +194,9 @@ function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [movementPage, setMovementPage] = useState(1);
 
-  const canDeleteMovements = user?.role === "SUDO";
+  const canDeleteMovements = user?.role === "SUDO" || user?.role === "ADMIN";
   const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
 
   const startDateRef = useRef(null);
@@ -268,6 +279,34 @@ function Dashboard() {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  const recentMovements = data?.recentMovements ?? [];
+  const totalMovementPages = Math.max(
+    1,
+    Math.ceil(recentMovements.length / RECENT_MOVEMENTS_PAGE_SIZE)
+  );
+  const movementPageStart = (movementPage - 1) * RECENT_MOVEMENTS_PAGE_SIZE;
+  const paginatedRecentMovements = recentMovements.slice(
+    movementPageStart,
+    movementPageStart + RECENT_MOVEMENTS_PAGE_SIZE
+  );
+  const movementPageNumbers = Array.from(
+    { length: totalMovementPages },
+    (_, index) => index + 1
+  );
+  const visibleMovementStart = recentMovements.length ? movementPageStart + 1 : 0;
+  const visibleMovementEnd = Math.min(
+    movementPageStart + RECENT_MOVEMENTS_PAGE_SIZE,
+    recentMovements.length
+  );
+
+  useEffect(() => {
+    setMovementPage((currentPage) => Math.min(currentPage, totalMovementPages));
+  }, [totalMovementPages]);
+
+  useEffect(() => {
+    setMovementPage(1);
+  }, [data?.recentMovements?.[0]?.id]);
 
   const openSaleSheet = () => {
     setSaleForm({
@@ -951,7 +990,7 @@ function Dashboard() {
         ) : data?.recentMovements?.length ? (
           <>
             <div className="grid gap-3 md:hidden">
-              {data.recentMovements.map((movement) => (
+              {paginatedRecentMovements.map((movement) => (
                 <MovementMobileCard
                   key={movement.id}
                   movement={movement}
@@ -966,67 +1005,104 @@ function Dashboard() {
             </div>
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">Fecha</th>
-                  <th className="pb-3 pr-4 font-medium">Tipo</th>
-                  <th className="pb-3 pr-4 font-medium">Descripción</th>
-                  <th className="pb-3 pr-4 font-medium">Cliente</th>
-                  {canViewAudit && (
-                    <th className="pb-3 pr-4 font-medium">Realizado por</th>
-                  )}
-                  <th className="pb-3 pr-4 font-medium">Pago</th>
-                  <th className="pb-3 font-medium text-right">Monto</th>
-                  {canDeleteMovements && (
-                    <th className="pb-3 pl-4 font-medium text-right">Acciones</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentMovements.map((movement) => (
-                  <tr key={movement.id} className="border-b last:border-0">
-                    <td className="py-3 pr-4 whitespace-nowrap">
-                      {formatDate(movement.createdAt)}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <Badge variant="secondary">
-                        {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
-                      </Badge>
-                    </td>
-                    <td className="py-3 pr-4">{movement.description}</td>
-                    <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-3 pr-4 font-medium">Fecha</th>
+                    <th className="pb-3 pr-4 font-medium">Tipo</th>
+                    <th className="pb-3 pr-4 font-medium">Descripción</th>
+                    <th className="pb-3 pr-4 font-medium">Cliente</th>
                     {canViewAudit && (
-                      <td className="py-3 pr-4">{movement.createdByName ?? "—"}</td>
+                      <th className="pb-3 pr-4 font-medium">Realizado por</th>
                     )}
-                    <td className="py-3 pr-4 whitespace-nowrap">
-                      {formatPaymentMethod(movement)}
-                    </td>
-                    <td className="py-3 text-right font-medium">
-                      {formatCurrency(movement.amount)}
-                    </td>
+                    <th className="pb-3 pr-4 font-medium">Pago</th>
+                    <th className="pb-3 font-medium text-right">Monto</th>
                     {canDeleteMovements && (
-                      <td className="py-3 pl-4 text-right">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                          aria-label={`Eliminar ${movement.description}`}
-                          title="Eliminar movimiento"
-                          onClick={() => {
-                            setDeleteTarget(movement);
-                            setDeleteError(null);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </td>
+                      <th className="pb-3 pl-4 font-medium text-right">Acciones</th>
                     )}
                   </tr>
-                ))}
-              </tbody>
+                </thead>
+                <tbody>
+                  {paginatedRecentMovements.map((movement) => (
+                    <tr key={movement.id} className="border-b last:border-0">
+                      <td className="py-3 pr-4 whitespace-nowrap">
+                        {formatDate(movement.createdAt)}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Badge variant="secondary">
+                          {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
+                        </Badge>
+                      </td>
+                      <td className="py-3 pr-4">{movement.description}</td>
+                      <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                      {canViewAudit && (
+                        <td className="py-3 pr-4">{movement.createdByName ?? "—"}</td>
+                      )}
+                      <td className="py-3 pr-4 whitespace-nowrap">
+                        {formatPaymentMethod(movement)}
+                      </td>
+                      <td className="py-3 text-right font-medium">
+                        {formatCurrency(movement.amount)}
+                      </td>
+                      {canDeleteMovements && (
+                        <td className="py-3 pl-4 text-right">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                            aria-label={`Eliminar ${movement.description}`}
+                            title="Eliminar movimiento"
+                            onClick={() => {
+                              setDeleteTarget(movement);
+                              setDeleteError(null);
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
+            {totalMovementPages > 1 && (
+              <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {visibleMovementStart}-{visibleMovementEnd} de{" "}
+                  {recentMovements.length}
+                </p>
+                <Pagination className="sm:mx-0 sm:w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={movementPage === 1}
+                        onClick={() => setMovementPage((page) => Math.max(1, page - 1))}
+                      />
+                    </PaginationItem>
+                    {movementPageNumbers.map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationButton
+                          isActive={movementPage === page}
+                          aria-label={`Ir a pagina ${page}`}
+                          onClick={() => setMovementPage(page)}
+                        >
+                          {page}
+                        </PaginationButton>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={movementPage === totalMovementPages}
+                        onClick={() =>
+                          setMovementPage((page) => Math.min(totalMovementPages, page + 1))
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">

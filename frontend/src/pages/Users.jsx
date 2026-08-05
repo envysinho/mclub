@@ -48,6 +48,7 @@ function Users() {
   const [impersonatingUserId, setImpersonatingUserId] = useState(null);
   const canManageAllUsers = currentUser?.role === "SUDO";
   const canCreateUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
+  const canDeleteUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
   const canEditUser = (user) => canManageAllUsers || currentUser?.id === user.id;
   const canImpersonateUser = (user) =>
     canManageAllUsers && currentUser?.id !== user.id && user.enabled;
@@ -426,7 +427,7 @@ function Users() {
                         Editar
                       </Button>
                     )}
-                    {canManageAllUsers && (
+                    {canDeleteUsers && (
                       <Button
                         type="button"
                         variant="outline"

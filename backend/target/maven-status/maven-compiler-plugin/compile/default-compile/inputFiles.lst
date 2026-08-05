@@ -1,4 +1,5 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/GymApplication.java
+/home/envy/gym/backend/src/main/java/com/example/gym/config/DataInitializer.java
 /home/envy/gym/backend/src/main/java/com/example/gym/config/GlobalExceptionHandler.java
 /home/envy/gym/backend/src/main/java/com/example/gym/config/SecurityConfig.java
 /home/envy/gym/backend/src/main/java/com/example/gym/controller/AuthController.java

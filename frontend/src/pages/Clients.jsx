@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -49,6 +57,7 @@ const EMPTY_PLAN = {
 };
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const CLIENTS_PAGE_SIZE = 13;
 
 function getMembershipDaysRemaining(client) {
   if (!client.activeMembership?.endDate) {
@@ -142,6 +151,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const [editingClient, setEditingClient] = useState(null);
   const [clientForm, setClientForm] = useState(EMPTY_CLIENT);
   const [clientView, setClientView] = useState("list");
+  const [clientPage, setClientPage] = useState(1);
   const [updatingClientStatusId, setUpdatingClientStatusId] = useState(null);
 
   const [showPlanForm, setShowPlanForm] = useState(false);
@@ -208,6 +218,24 @@ function Clients({ module = "clients", searchQuery = "" }) {
         return fullName(firstClient).localeCompare(fullName(secondClient), "es");
       });
   }, [clients, searchQuery]);
+
+  const totalClientPages = Math.max(1, Math.ceil(sortedClients.length / CLIENTS_PAGE_SIZE));
+  const clientPageStart = (clientPage - 1) * CLIENTS_PAGE_SIZE;
+  const paginatedClients = sortedClients.slice(
+    clientPageStart,
+    clientPageStart + CLIENTS_PAGE_SIZE
+  );
+  const clientPageNumbers = Array.from({ length: totalClientPages }, (_, index) => index + 1);
+  const visibleClientStart = sortedClients.length ? clientPageStart + 1 : 0;
+  const visibleClientEnd = Math.min(clientPageStart + CLIENTS_PAGE_SIZE, sortedClients.length);
+
+  useEffect(() => {
+    setClientPage((currentPage) => Math.min(currentPage, totalClientPages));
+  }, [totalClientPages]);
+
+  useEffect(() => {
+    setClientPage(1);
+  }, [searchQuery]);
 
   const resetClientForm = () => {
     setClientForm(EMPTY_CLIENT);
@@ -660,29 +688,112 @@ function Clients({ module = "clients", searchQuery = "" }) {
                 ))}
               </div>
             ) : sortedClients.length && clientView === "grid" ? (
-              <div className="grid gap-3 lg:grid-cols-2">
-                {sortedClients.map((client) => (
-                  <div key={client.id} className="rounded-xl border p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold">{fullName(client)}</h3>
-                        <p className="text-sm text-muted-foreground break-words">
-                          {client.phone || "Sin teléfono"}
-                        </p>
-                        {canViewAudit && (
-                          <p className="text-xs text-muted-foreground">
-                            Agregado por {client.createdByName ?? "Sin responsable"}
+              <>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {paginatedClients.map((client) => (
+                    <div key={client.id} className="rounded-xl border p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold">{fullName(client)}</h3>
+                          <p className="text-sm text-muted-foreground break-words">
+                            {client.phone || "Sin teléfono"}
                           </p>
+                          {canViewAudit && (
+                            <p className="text-xs text-muted-foreground">
+                              Agregado por {client.createdByName ?? "Sin responsable"}
+                            </p>
+                          )}
+                        </div>
+                        {renderClientStatusBadge(client)}
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {renderWhatsappReminderButton(client)}
+                          {canManageClients && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 sm:flex-none"
+                                onClick={() => openEditClient(client)}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
+                                onClick={() => setDeleteTarget({ type: "client", item: client })}
+                              >
+                                Eliminar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {totalClientPages > 1 && (
+                  <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando {visibleClientStart}-{visibleClientEnd} de {sortedClients.length}
+                    </p>
+                    <Pagination className="sm:mx-0 sm:w-auto">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            disabled={clientPage === 1}
+                            onClick={() => setClientPage((page) => Math.max(1, page - 1))}
+                          />
+                        </PaginationItem>
+                        {clientPageNumbers.map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationButton
+                              isActive={clientPage === page}
+                              aria-label={`Ir a pagina ${page}`}
+                              onClick={() => setClientPage(page)}
+                            >
+                              {page}
+                            </PaginationButton>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            disabled={clientPage === totalClientPages}
+                            onClick={() =>
+                              setClientPage((page) => Math.min(totalClientPages, page + 1))
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            ) : sortedClients.length ? (
+              <>
+                <div className="overflow-hidden rounded-xl border">
+                  {paginatedClients.map((client) => (
+                    <div
+                      key={client.id}
+                      className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4"
+                    >
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                        <h3 className="font-semibold">{fullName(client)}</h3>
+                        {renderClientMembershipInline(client)}
+                        {canViewAudit && (
+                          <span className="text-xs text-muted-foreground">
+                            Agregado por {client.createdByName ?? "Sin responsable"}
+                          </span>
                         )}
                       </div>
-                      {renderClientStatusBadge(client)}
-                    </div>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                         {renderWhatsappReminderButton(client)}
                         {canManageClients && (
                           <>
+                            {renderClientStatusSwitch(client)}
                             <Button
                               size="sm"
                               variant="outline"
@@ -703,52 +814,45 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         )}
                       </div>
                     </div>
+                  ))}
+                </div>
+                {totalClientPages > 1 && (
+                  <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando {visibleClientStart}-{visibleClientEnd} de {sortedClients.length}
+                    </p>
+                    <Pagination className="sm:mx-0 sm:w-auto">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            disabled={clientPage === 1}
+                            onClick={() => setClientPage((page) => Math.max(1, page - 1))}
+                          />
+                        </PaginationItem>
+                        {clientPageNumbers.map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationButton
+                              isActive={clientPage === page}
+                              aria-label={`Ir a pagina ${page}`}
+                              onClick={() => setClientPage(page)}
+                            >
+                              {page}
+                            </PaginationButton>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            disabled={clientPage === totalClientPages}
+                            onClick={() =>
+                              setClientPage((page) => Math.min(totalClientPages, page + 1))
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   </div>
-                ))}
-              </div>
-            ) : sortedClients.length ? (
-              <div className="overflow-hidden rounded-xl border">
-                {sortedClients.map((client) => (
-                  <div
-                    key={client.id}
-                    className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:min-h-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4"
-                  >
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                      <h3 className="font-semibold">{fullName(client)}</h3>
-                      {renderClientMembershipInline(client)}
-                      {canViewAudit && (
-                        <span className="text-xs text-muted-foreground">
-                          Agregado por {client.createdByName ?? "Sin responsable"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
-                      {renderWhatsappReminderButton(client)}
-                      {canManageClients && (
-                        <>
-                          {renderClientStatusSwitch(client)}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 sm:flex-none"
-                            onClick={() => openEditClient(client)}
-                          >
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 sm:flex-none"
-                            onClick={() => setDeleteTarget({ type: "client", item: client })}
-                          >
-                            Eliminar
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                )}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {searchQuery.trim()
