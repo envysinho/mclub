@@ -15,6 +15,8 @@ public record DailyReportResponse(
         BigDecimal renewalRevenue,
         BigDecimal membershipRevenue,
         BigDecimal productRevenue,
+        BigDecimal cashRevenue,
+        BigDecimal yapeRevenue,
         BigDecimal totalRevenue,
         BigDecimal totalExpenses,
         BigDecimal netBalance,

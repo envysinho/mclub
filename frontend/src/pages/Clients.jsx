@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List, MessageCircle, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  LayoutGrid,
+  List,
+  MessageCircle,
+  Pencil,
+  Plus,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +38,10 @@ import {
   createMembershipPlan,
   deleteClient,
   deleteMembershipPlan,
+  listClientAttendances,
   listClients,
   listMembershipPlans,
+  registerClientAttendance,
   updateClient,
   updateMembershipPlan,
 } from "@/lib/api";
@@ -115,6 +127,24 @@ function formatReminderDate(dateString) {
   }).format(new Date(dateString));
 }
 
+function formatAttendanceDay(dateString) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("es-PE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${dateString}T00:00:00`));
+}
+
+function formatAttendanceTime(dateString) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("es-PE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateString));
+}
+
 function buildWhatsappReminderUrl(client) {
   const phone = normalizeWhatsappPhone(client.phone);
   const membership = client.activeMembership;
@@ -146,6 +176,12 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [attendanceClient, setAttendanceClient] = useState(null);
+  const [attendances, setAttendances] = useState([]);
+  const [attendanceError, setAttendanceError] = useState(null);
+  const [attendanceNotice, setAttendanceNotice] = useState(null);
+  const [isLoadingAttendances, setIsLoadingAttendances] = useState(false);
+  const [recordingAttendanceId, setRecordingAttendanceId] = useState(null);
 
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -345,6 +381,51 @@ function Clients({ module = "clients", searchQuery = "" }) {
     }
   };
 
+  const openAttendanceHistory = async (client) => {
+    setAttendanceClient(client);
+    setAttendances([]);
+    setAttendanceError(null);
+    setIsLoadingAttendances(true);
+
+    try {
+      const data = await listClientAttendances(client.id, handleUnauthorized);
+      setAttendances(data);
+    } catch (err) {
+      setAttendanceError(err instanceof Error ? err.message : "Error al cargar asistencias");
+    } finally {
+      setIsLoadingAttendances(false);
+    }
+  };
+
+  const handleRegisterAttendance = async (client) => {
+    setRecordingAttendanceId(client.id);
+    setAttendanceError(null);
+
+    try {
+      const attendance = await registerClientAttendance(client.id, handleUnauthorized);
+      setError(null);
+      setAttendanceNotice(`Asistencia registrada para ${fullName(client)}.`);
+      setAttendances((currentAttendances) => {
+        if (attendanceClient?.id !== client.id) {
+          return currentAttendances;
+        }
+
+        const exists = currentAttendances.some(
+          (currentAttendance) => currentAttendance.id === attendance.id
+        );
+
+        return exists ? currentAttendances : [attendance, ...currentAttendances];
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al registrar asistencia";
+      setAttendanceNotice(null);
+      setError(message);
+      setAttendanceError(message);
+    } finally {
+      setRecordingAttendanceId(null);
+    }
+  };
+
   const handleClientStatusChange = async (client) => {
     const nextActive = !(client.active !== false);
     setUpdatingClientStatusId(client.id);
@@ -496,6 +577,36 @@ function Clients({ module = "clients", searchQuery = "" }) {
     );
   };
 
+  const renderAttendanceButtons = (client) => {
+    const isRecording = recordingAttendanceId === client.id;
+
+    return (
+      <>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          aria-label={`Registrar asistencia de ${fullName(client)}`}
+          title="Registrar asistencia"
+          disabled={isRecording}
+          onClick={() => handleRegisterAttendance(client)}
+        >
+          <CheckCircle2 className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          aria-label={`Ver asistencias de ${fullName(client)}`}
+          title="Ver asistencias"
+          onClick={() => openAttendanceHistory(client)}
+        >
+          <CalendarDays className="size-4" />
+        </Button>
+      </>
+    );
+  };
+
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
@@ -508,6 +619,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
         {error && (
           <p className="mb-4 text-sm text-destructive" role="alert">
             {error}
+          </p>
+        )}
+        {attendanceNotice && (
+          <p className="mb-4 text-sm text-emerald-500" role="status">
+            {attendanceNotice}
           </p>
         )}
 
@@ -537,6 +653,77 @@ function Clients({ module = "clients", searchQuery = "" }) {
             }
           }}
         />
+
+        <Sheet
+          open={Boolean(attendanceClient)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAttendanceClient(null);
+              setAttendances([]);
+              setAttendanceError(null);
+            }
+          }}
+        >
+          <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+            <SheetHeader className="border-b pr-12">
+              <SheetTitle>
+                {attendanceClient ? fullName(attendanceClient) : "Asistencias"}
+              </SheetTitle>
+              <SheetDescription>
+                Historial de días registrados. No modifica la vigencia del plan.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 px-4 pb-4">
+              {attendanceClient && (
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={recordingAttendanceId === attendanceClient.id}
+                  onClick={() => handleRegisterAttendance(attendanceClient)}
+                >
+                  <CheckCircle2 />
+                  {recordingAttendanceId === attendanceClient.id
+                    ? "Registrando..."
+                    : "Registrar asistencia de hoy"}
+                </Button>
+              )}
+
+              {attendanceError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {attendanceError}
+                </p>
+              )}
+
+              {isLoadingAttendances ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : attendances.length ? (
+                <div className="overflow-hidden rounded-xl border">
+                  {attendances.map((attendance) => (
+                    <div key={attendance.id} className="border-b px-4 py-3 last:border-b-0">
+                      <p className="font-medium capitalize">
+                        {formatAttendanceDay(attendance.attendanceDate)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Ingreso {formatAttendanceTime(attendance.checkedInAt)}
+                        {attendance.registeredByName
+                          ? ` · Registrado por ${attendance.registeredByName}`
+                          : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Este cliente aún no tiene asistencias registradas.
+                </p>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {isClientsModule && (
           <div className="space-y-4">
@@ -709,6 +896,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div className="min-w-0">{renderClientMembershipSummary(client)}</div>
                         <div className="flex flex-wrap justify-end gap-2">
+                          {renderAttendanceButtons(client)}
                           {renderWhatsappReminderButton(client)}
                           {canManageClients && (
                             <>
@@ -790,6 +978,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
+                        {renderAttendanceButtons(client)}
                         {renderWhatsappReminderButton(client)}
                         {canManageClients && (
                           <>

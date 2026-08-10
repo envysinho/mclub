@@ -17,6 +17,7 @@ import com.example.gym.dto.MonthlyReportResponse;
 import com.example.gym.dto.MovementResponse;
 import com.example.gym.entity.Movement;
 import com.example.gym.model.MovementType;
+import com.example.gym.model.PaymentMethod;
 import com.example.gym.repository.MovementRepository;
 
 @Service
@@ -105,6 +106,12 @@ public class ReportService {
         BigDecimal renewalRevenue = sumByType(movements, MovementType.MEMBERSHIP_RENEWAL);
         BigDecimal membershipRevenue = newMembershipRevenue.add(renewalRevenue);
         BigDecimal productRevenue = sumByType(movements, MovementType.PRODUCT_SALE);
+        BigDecimal cashRevenue = movements.stream()
+                .map(this::cashAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal yapeRevenue = movements.stream()
+                .map(this::yapeAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalRevenue = membershipRevenue.add(productRevenue);
         var cashRegister = cashRegisterService.buildResponse(selectedDate);
         BigDecimal totalExpenses = cashRegister.expenses().stream()
@@ -126,6 +133,8 @@ public class ReportService {
                 renewalRevenue,
                 membershipRevenue,
                 productRevenue,
+                cashRevenue,
+                yapeRevenue,
                 totalRevenue,
                 totalExpenses,
                 totalRevenue.subtract(totalExpenses),
@@ -144,6 +153,28 @@ public class ReportService {
                 .filter(movement -> movement.getType() == type)
                 .map(Movement::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal cashAmount(Movement movement) {
+        PaymentMethod paymentMethod = movement.getPaymentMethod();
+        if (paymentMethod == PaymentMethod.EFECTIVO) {
+            return movement.getAmount();
+        }
+        if (paymentMethod == PaymentMethod.MIXTO) {
+            return movement.getCashAmount() == null ? BigDecimal.ZERO : movement.getCashAmount();
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private BigDecimal yapeAmount(Movement movement) {
+        PaymentMethod paymentMethod = movement.getPaymentMethod();
+        if (paymentMethod == PaymentMethod.YAPE) {
+            return movement.getAmount();
+        }
+        if (paymentMethod == PaymentMethod.MIXTO) {
+            return movement.getYapeAmount() == null ? BigDecimal.ZERO : movement.getYapeAmount();
+        }
+        return BigDecimal.ZERO;
     }
 
     private YearMonth parseMonth(String month) {

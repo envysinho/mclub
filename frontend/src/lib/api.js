@@ -85,6 +85,18 @@ export async function deleteClient(id, onUnauthorized) {
   );
 }
 
+export async function listClientAttendances(clientId, onUnauthorized) {
+  return apiFetch(`/api/clients/${clientId}/attendances`, {}, onUnauthorized);
+}
+
+export async function registerClientAttendance(clientId, onUnauthorized) {
+  return apiFetch(
+    `/api/clients/${clientId}/attendances`,
+    { method: "POST" },
+    onUnauthorized
+  );
+}
+
 export async function listMembershipPlans(onUnauthorized) {
   return apiFetch("/api/membership-plans", {}, onUnauthorized);
 }

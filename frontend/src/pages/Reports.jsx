@@ -178,6 +178,8 @@ function buildDailyReportFallback(date, monthReport, cashRegister) {
   const renewalRevenue = sumMovements(movements, "MEMBERSHIP_RENEWAL");
   const membershipRevenue = newMembershipRevenue + renewalRevenue;
   const productRevenue = sumMovements(movements, "PRODUCT_SALE");
+  const cashRevenue = movements.reduce((total, movement) => total + cashAmount(movement), 0);
+  const yapeRevenue = movements.reduce((total, movement) => total + yapeAmount(movement), 0);
 
   return {
     date,
@@ -190,6 +192,8 @@ function buildDailyReportFallback(date, monthReport, cashRegister) {
     renewalRevenue,
     membershipRevenue,
     productRevenue,
+    cashRevenue,
+    yapeRevenue,
     totalRevenue: membershipRevenue + productRevenue,
     totalExpenses: cashRegister?.expenses?.reduce((total, expense) => total + toNumber(expense.amount), 0) ?? 0,
     netBalance:
@@ -380,6 +384,9 @@ function Reports() {
     () => monthOptions.find((option) => option.value === month) ?? monthOptions[0],
     [month, monthOptions]
   );
+  const dailyCashRevenue = dailyReport?.cashRevenue ?? dailyReport?.cashRegister?.cashIncome ?? 0;
+  const dailyYapeRevenue = dailyReport?.yapeRevenue ?? dailyReport?.cashRegister?.yapeIncome ?? 0;
+  const dailyRevenueHint = `Efectivo ${formatCurrency(dailyCashRevenue)} · Yape ${formatCurrency(dailyYapeRevenue)}`;
   const incomeRows = [
     {
       label: "Nuevas membresías",
@@ -426,6 +433,14 @@ function Reports() {
     {
       label: "Productos",
       value: formatCurrency(dailyReport?.productRevenue ?? 0),
+    },
+    {
+      label: "Total efectivo",
+      value: formatCurrency(dailyCashRevenue),
+    },
+    {
+      label: "Total Yape",
+      value: formatCurrency(dailyYapeRevenue),
     },
     {
       label: "Total del día",
@@ -618,6 +633,7 @@ function Reports() {
                     icon={TrendingUp}
                     label="Ingresos del día"
                     value={formatCurrency(dailyReport?.totalRevenue ?? 0)}
+                    hint={dailyRevenueHint}
                   />
                   <ReportStat
                     icon={TrendingDown}

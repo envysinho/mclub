@@ -49,6 +49,9 @@ public class Client {
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ClientMembership> memberships = new ArrayList<>();
 
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ClientAttendance> attendances = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -111,6 +114,10 @@ public class Client {
 
     public List<ClientMembership> getMemberships() {
         return memberships;
+    }
+
+    public List<ClientAttendance> getAttendances() {
+        return attendances;
     }
 
     public Instant getCreatedAt() {
