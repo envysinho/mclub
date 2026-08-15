@@ -199,23 +199,20 @@ function MembershipQrContinuous() {
   return (
     <PageCard>
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 rounded-xl bg-primary/10 p-2 text-primary">
               <Camera className="size-5" />
             </div>
-            <div>
-              <h2 className="text-xl font-semibold">Acceso QR continuo</h2>
-              <p className="text-sm text-muted-foreground">
-                Cámara activa para validar membresías en recepción.
-              </p>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-semibold sm:text-xl">Asistencia</h2>
             </div>
           </div>
           <Badge
             className={
               isScanning
-                ? "w-fit bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15"
-                : "w-fit"
+                ? "shrink-0 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15"
+                : "shrink-0"
             }
             variant={isScanning ? "default" : "outline"}
           >

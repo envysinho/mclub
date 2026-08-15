@@ -79,11 +79,12 @@ function AppContent() {
 
   const activeSearchQuery =
     searchQuery.trim().length >= MIN_SEARCH_LENGTH ? searchQuery : "";
+  const isAccessUser = user?.role === "ACCESS";
 
   useEffect(() => {
     const normalizedSearch = activeSearchQuery.trim().toLocaleLowerCase("es");
 
-    if (!normalizedSearch || !isAuthenticated) {
+    if (!normalizedSearch || !isAuthenticated || isAccessUser) {
       return undefined;
     }
 
@@ -149,9 +150,13 @@ function AppContent() {
     return () => {
       isCanceled = true;
     };
-  }, [activeSearchQuery, isAuthenticated, logout]);
+  }, [activeSearchQuery, isAccessUser, isAuthenticated, logout]);
 
   const renderPage = () => {
+    if (isAccessUser) {
+      return <MembershipQrContinuous />;
+    }
+
     switch (currentPage) {
       case "clients":
         return <Clients key="clients" module="clients" searchQuery={activeSearchQuery} />;
@@ -160,7 +165,7 @@ function AppContent() {
       case "validation":
         return <MembershipValidation />;
       case "qrAccess":
-        return user?.role === "SUDO" ? <MembershipQrContinuous /> : <Dashboard />;
+        return user?.role === "SUDO" || user?.role === "ACCESS" ? <MembershipQrContinuous /> : <Dashboard />;
       case "products":
         return <Products searchQuery={activeSearchQuery} />;
       case "inventory":
@@ -181,13 +186,37 @@ function AppContent() {
     return <Login />;
   }
 
-  const currentPageMeta = PAGE_META[currentPage] ?? PAGE_META.dashboard;
+  const currentPageMeta = isAccessUser ? PAGE_META.qrAccess : PAGE_META[currentPage] ?? PAGE_META.dashboard;
+
+  if (isAccessUser) {
+    return (
+      <TooltipProvider>
+        <div className="flex min-h-svh flex-col bg-background">
+          <AppHeader
+            title={PAGE_META.qrAccess.title}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+            showSidebarTrigger={false}
+            showSearch={false}
+            user={user}
+            impersonator={impersonator}
+            isImpersonating={isImpersonating}
+            onLogout={logout}
+            onStopImpersonation={stopImpersonation}
+          />
+          <main className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+            <MembershipQrContinuous />
+          </main>
+        </div>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar
-          currentPage={currentPage}
+          currentPage={isAccessUser ? "qrAccess" : currentPage}
           onNavigate={setCurrentPage}
         />
         <SidebarInset>
@@ -195,7 +224,7 @@ function AppContent() {
             title={currentPageMeta.title}
             isDark={isDark}
             onToggleTheme={toggleTheme}
-            showSearch
+            showSearch={!isAccessUser}
             searchValue={searchQuery}
             onSearchChange={handleSearchChange}
             user={user}

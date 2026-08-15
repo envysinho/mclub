@@ -9,9 +9,11 @@ function AppHeader({
   searchValue = "",
   onSearchChange,
   showSearch = false,
+  showSidebarTrigger = true,
   isImpersonating = false,
   impersonator,
   user,
+  onLogout,
   onStopImpersonation,
 }) {
   const impersonatorName = impersonator?.name || impersonator?.username || "sudo";
@@ -19,7 +21,7 @@ function AppHeader({
 
   return (
     <header className="sticky top-0 z-20 flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-nowrap sm:gap-3 sm:px-4">
-      <SidebarTrigger className="-ml-1 md:hidden" />
+      {showSidebarTrigger && <SidebarTrigger className="-ml-1 md:hidden" />}
       <div className="flex min-w-0 flex-1 items-center">
         <span className="truncate font-semibold">{title}</span>
       </div>
@@ -92,6 +94,17 @@ function AppHeader({
             {isDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
           </span>
         </button>
+        {onLogout && (
+          <button
+            type="button"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+            onClick={onLogout}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <LogOut className="size-4" />
+          </button>
+        )}
       </div>
     </header>
   );

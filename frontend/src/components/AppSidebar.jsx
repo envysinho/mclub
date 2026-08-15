@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { id: "clients", icon: Users, label: "Clientes" },
   { id: "memberships", icon: CreditCard, label: "Membresías" },
   { id: "validation", icon: Camera, label: "Validación" },
-  { id: "qrAccess", icon: QrCode, label: "Acceso QR", roles: ["SUDO"] },
+  { id: "qrAccess", icon: QrCode, label: "Acceso QR", roles: ["SUDO", "ACCESS"] },
   { id: "products", icon: Package, label: "Productos" },
   { id: "inventory", icon: Boxes, label: "Inventario" },
   { id: "cash", icon: WalletCards, label: "Caja" },

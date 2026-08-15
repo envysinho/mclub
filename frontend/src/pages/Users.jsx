@@ -320,6 +320,7 @@ function Users() {
                       onChange={(event) => setUserForm({ ...userForm, role: event.target.value })}
                     >
                       <option value="USER">user</option>
+                      <option value="ACCESS">acceso</option>
                       <option value="ADMIN">admin</option>
                       <option value="SUDO">sudo</option>
                     </select>
