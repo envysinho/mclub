@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import { Camera, CheckCircle2, ScanLine, ShieldX, Sparkles } from "lucide-react";
+import { CalendarCheck, Camera, CheckCircle2, ScanLine, ShieldX, Sparkles } from "lucide-react";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,14 @@ function extractToken(value) {
   } catch {
     return trimmed;
   }
+}
+
+function formatAttendanceTime(dateString) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("es-PE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateString));
 }
 
 function MembershipValidation() {
@@ -59,7 +67,7 @@ function MembershipValidation() {
       const response = await validateMembershipToken({ token: nextToken }, handleUnauthorized);
       setToken(nextToken);
       setResult(response);
-      setScanMessage(response.valid ? "Token verificado correctamente." : response.message);
+      setScanMessage(response.valid ? "Token verificado y asistencia confirmada." : response.message);
     } catch (err) {
       setResult(null);
       setScanError(err instanceof Error ? err.message : "Error al validar el token");
@@ -186,16 +194,34 @@ function MembershipValidation() {
               <p>
                 <span className="font-medium">Token:</span> <span className="break-all font-mono">{result.accessToken}</span>
               </p>
+              {result.attendance && (
+                <p>
+                  <span className="font-medium">Asistencia:</span> Confirmada a las{" "}
+                  {formatAttendanceTime(result.attendance.checkedInAt)}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2 rounded-xl border border-dashed bg-background px-4 py-3 text-sm text-muted-foreground">
               {result.valid ? <CheckCircle2 className="size-4 text-emerald-600" /> : <ShieldX className="size-4 text-destructive" />}
               <span>
                 {result.valid
-                  ? "La membresía está habilitada para el acceso."
+                  ? "La membresía está habilitada para el acceso y la asistencia de hoy quedó confirmada."
                   : "La membresía existe, pero no está habilitada para acceso."}
               </span>
             </div>
+            {result.attendance && (
+              <div className="flex items-center gap-2 rounded-xl border bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+                <CalendarCheck className="size-4" />
+                <span>
+                  Registro de asistencia guardado
+                  {result.attendance.registeredByName
+                    ? ` por ${result.attendance.registeredByName}`
+                    : ""}
+                  .
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 p-6 text-center text-muted-foreground">

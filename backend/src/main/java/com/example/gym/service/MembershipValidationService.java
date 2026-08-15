@@ -96,7 +96,8 @@ public class MembershipValidationService {
                 membership.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant(),
                 membership.getEndDate().atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant(),
                 membership.getStatus(),
-                "Token válido");
+                "Token válido",
+                null);
     }
 
     private MembershipValidationResponse buildInvalidResponse(ClientMembership membership, String message) {
@@ -111,7 +112,8 @@ public class MembershipValidationService {
                 membership.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant(),
                 membership.getEndDate().atTime(23, 59).atZone(ZoneId.systemDefault()).toInstant(),
                 membership.getStatus(),
-                message);
+                message,
+                null);
     }
 
     public record MembershipAssignmentContext(

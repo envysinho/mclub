@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.gym.dto.AssignMembershipRequest;
+import com.example.gym.dto.ClientAttendanceResponse;
 import com.example.gym.dto.CreateMembershipPlanRequest;
 import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
@@ -33,16 +34,19 @@ public class MembershipService {
     private final ClientMembershipRepository clientMembershipRepository;
     private final MovementRepository movementRepository;
     private final MembershipValidationService membershipValidationService;
+    private final ClientAttendanceService clientAttendanceService;
 
     public MembershipService(
             MembershipPlanRepository membershipPlanRepository,
             ClientMembershipRepository clientMembershipRepository,
             MovementRepository movementRepository,
-            MembershipValidationService membershipValidationService) {
+            MembershipValidationService membershipValidationService,
+            ClientAttendanceService clientAttendanceService) {
         this.membershipPlanRepository = membershipPlanRepository;
         this.clientMembershipRepository = clientMembershipRepository;
         this.movementRepository = movementRepository;
         this.membershipValidationService = membershipValidationService;
+        this.clientAttendanceService = clientAttendanceService;
     }
 
     @Transactional(readOnly = true)
@@ -100,9 +104,15 @@ public class MembershipService {
         return MembershipAssignmentResponse.from(saved);
     }
 
-    @Transactional(readOnly = true)
-    public MembershipValidationResponse validateMembershipToken(String token) {
-        return membershipValidationService.validateToken(token);
+    @Transactional
+    public MembershipValidationResponse validateMembershipToken(String token, User registeredBy) {
+        MembershipValidationResponse response = membershipValidationService.validateToken(token);
+        if (!response.valid()) {
+            return response;
+        }
+
+        ClientAttendanceResponse attendance = clientAttendanceService.registerToday(response.clientId(), registeredBy);
+        return response.withAttendance(attendance);
     }
 
     private String generateAccessToken() {

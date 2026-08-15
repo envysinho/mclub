@@ -81,8 +81,10 @@ public class MembershipController {
     }
 
     @PostMapping("/memberships/validate")
-    public MembershipValidationResponse validateToken(@Valid @RequestBody ValidateMembershipTokenRequest request) {
-        return membershipService.validateMembershipToken(request.token());
+    public MembershipValidationResponse validateToken(
+            @Valid @RequestBody ValidateMembershipTokenRequest request,
+            Authentication authentication) {
+        return membershipService.validateMembershipToken(request.token(), authenticatedUser(authentication));
     }
 
     @PostMapping("/memberships/{membershipId}/qr-download-links")

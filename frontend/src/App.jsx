@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import CashRegister from "@/pages/CashRegister";
 import Clients from "@/pages/Clients";
 import Inventory from "@/pages/Inventory";
+import MembershipQrContinuous from "@/pages/MembershipQrContinuous";
 import MembershipValidation from "@/pages/MembershipValidation";
 import Products from "@/pages/Products";
 import Reports from "@/pages/Reports";
@@ -29,6 +30,9 @@ const PAGE_META = {
   },
   validation: {
     title: "Validación",
+  },
+  qrAccess: {
+    title: "Acceso QR",
   },
   products: {
     title: "Productos",
@@ -155,6 +159,8 @@ function AppContent() {
         return <Clients key="memberships" module="memberships" />;
       case "validation":
         return <MembershipValidation />;
+      case "qrAccess":
+        return user?.role === "SUDO" ? <MembershipQrContinuous /> : <Dashboard />;
       case "products":
         return <Products searchQuery={activeSearchQuery} />;
       case "inventory":

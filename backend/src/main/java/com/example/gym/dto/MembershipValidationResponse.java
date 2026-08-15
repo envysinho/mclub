@@ -15,5 +15,22 @@ public record MembershipValidationResponse(
         Instant startDate,
         Instant endDate,
         MembershipStatus status,
-        String message) {
+        String message,
+        ClientAttendanceResponse attendance) {
+
+    public MembershipValidationResponse withAttendance(ClientAttendanceResponse attendance) {
+        return new MembershipValidationResponse(
+                valid,
+                membershipId,
+                clientId,
+                clientName,
+                planId,
+                planName,
+                accessToken,
+                startDate,
+                endDate,
+                status,
+                message,
+                attendance);
+    }
 }
