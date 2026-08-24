@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -39,6 +47,7 @@ const EMPTY_PRODUCT = {
 
 const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
 const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
+const PRODUCTS_PAGE_SIZE = 13;
 
 function Products({ searchQuery = "" }) {
   const { logout, user } = useAuth();
@@ -56,6 +65,7 @@ function Products({ searchQuery = "" }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
   const [productView, setProductView] = useState("grid");
+  const [productPage, setProductPage] = useState(1);
   const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
 
   const handleUnauthorized = useCallback(() => {
@@ -257,6 +267,63 @@ function Products({ searchQuery = "" }) {
         .some((value) => String(value).toLocaleLowerCase("es").includes(normalizedSearch))
     );
   }, [products, searchQuery]);
+
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE));
+  const productPageStart = (productPage - 1) * PRODUCTS_PAGE_SIZE;
+  const paginatedProducts = filteredProducts.slice(
+    productPageStart,
+    productPageStart + PRODUCTS_PAGE_SIZE
+  );
+  const productPageNumbers = Array.from({ length: totalProductPages }, (_, index) => index + 1);
+  const visibleProductStart = filteredProducts.length ? productPageStart + 1 : 0;
+  const visibleProductEnd = Math.min(
+    productPageStart + PRODUCTS_PAGE_SIZE,
+    filteredProducts.length
+  );
+
+  useEffect(() => {
+    setProductPage((currentPage) => Math.min(currentPage, totalProductPages));
+  }, [totalProductPages]);
+
+  useEffect(() => {
+    setProductPage(1);
+  }, [searchQuery]);
+
+  const renderProductPagination = () =>
+    totalProductPages > 1 && (
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {visibleProductStart}-{visibleProductEnd} de {filteredProducts.length}
+        </p>
+        <Pagination className="sm:mx-0 sm:w-auto">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                disabled={productPage === 1}
+                onClick={() => setProductPage((page) => Math.max(1, page - 1))}
+              />
+            </PaginationItem>
+            {productPageNumbers.map((page) => (
+              <PaginationItem key={page}>
+                <PaginationButton
+                  isActive={productPage === page}
+                  aria-label={`Ir a pagina ${page}`}
+                  onClick={() => setProductPage(page)}
+                >
+                  {page}
+                </PaginationButton>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                disabled={productPage === totalProductPages}
+                onClick={() => setProductPage((page) => Math.min(totalProductPages, page + 1))}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -518,75 +585,78 @@ function Products({ searchQuery = "" }) {
               ))}
             </div>
           ) : filteredProducts.length && productView === "grid" ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-3 lg:grid-cols-2">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="rounded-lg border p-3 sm:rounded-xl sm:p-4">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate font-semibold leading-snug">{product.name}</h3>
-                      <p className="text-xs text-muted-foreground sm:text-sm">
-                        {formatCurrency(product.price)} · Stock: {product.stock}
-                      </p>
+            <>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-3 lg:grid-cols-2">
+                {paginatedProducts.map((product) => (
+                  <div key={product.id} className="rounded-lg border p-3 sm:rounded-xl sm:p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold leading-snug">{product.name}</h3>
+                        <p className="text-xs text-muted-foreground sm:text-sm">
+                          {formatCurrency(product.price)} · Stock: {product.stock}
+                        </p>
+                      </div>
+                      {renderProductStatus(product)}
                     </div>
-                    {renderProductStatus(product)}
+                    <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
+                          {product.description || "Sin descripción"}
+                        </p>
+                      </div>
+                      {canManageCatalog && (
+                        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            className="w-full sm:hidden"
+                            aria-label={`Editar ${product.name}`}
+                            title="Editar producto"
+                            onClick={() => openEdit(product)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:hidden"
+                            aria-label={`Eliminar ${product.name}`}
+                            title="Eliminar producto"
+                            onClick={() => setDeleteTarget(product)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="hidden sm:inline-flex sm:flex-none"
+                            onClick={() => openEdit(product)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="hidden border-destructive/30 text-destructive hover:bg-destructive/10 sm:inline-flex sm:flex-none"
+                            onClick={() => setDeleteTarget(product)}
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
-                        {product.description || "Sin descripción"}
-                      </p>
-                    </div>
-                    {canManageCatalog && (
-                    <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
-                      <Button
-                        size="icon-sm"
-                        variant="outline"
-                        className="w-full sm:hidden"
-                        aria-label={`Editar ${product.name}`}
-                        title="Editar producto"
-                        onClick={() => openEdit(product)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="outline"
-                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:hidden"
-                        aria-label={`Eliminar ${product.name}`}
-                        title="Eliminar producto"
-                        onClick={() => setDeleteTarget(product)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="hidden sm:inline-flex sm:flex-none"
-                        onClick={() => openEdit(product)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="hidden border-destructive/30 text-destructive hover:bg-destructive/10 sm:inline-flex sm:flex-none"
-                        onClick={() => setDeleteTarget(product)}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {renderProductPagination()}
+            </>
           ) : filteredProducts.length ? (
             <>
               <div className="overflow-hidden rounded-xl border md:hidden">
-                {filteredProducts.map((product) => renderProductListMobileCard(product))}
+                {paginatedProducts.map((product) => renderProductListMobileCard(product))}
               </div>
               <div className="hidden overflow-x-auto rounded-xl border md:block">
-                {filteredProducts.map((product) => (
+                {paginatedProducts.map((product) => (
                   <div
                     key={product.id}
                     className="grid min-w-[920px] items-center gap-4 border-b px-4 py-3 last:border-b-0"
@@ -625,6 +695,7 @@ function Products({ searchQuery = "" }) {
                   </div>
                 ))}
               </div>
+              {renderProductPagination()}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
