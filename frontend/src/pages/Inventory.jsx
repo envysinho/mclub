@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PackageCheck,
   PackagePlus,
@@ -232,6 +232,7 @@ function Inventory() {
   const [summaryPage, setSummaryPage] = useState(1);
   const [movementsPage, setMovementsPage] = useState(1);
   const [isMovementFabVisible, setIsMovementFabVisible] = useState(true);
+  const hasUserScrolledInventoryRef = useRef(false);
 
   const canManageInventory = user?.role === "SUDO" || user?.role === "ADMIN";
 
@@ -329,11 +330,18 @@ function Inventory() {
   }, [month]);
 
   useEffect(() => {
+    if (isLoading) {
+      hasUserScrolledInventoryRef.current = false;
+      setIsMovementFabVisible(true);
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 768px)");
     let animationFrame = null;
 
     const updateFabVisibility = () => {
-      if (!desktopQuery.matches) {
+      if (!desktopQuery.matches || !hasUserScrolledInventoryRef.current) {
         setIsMovementFabVisible(true);
         return;
       }
@@ -344,7 +352,11 @@ function Inventory() {
       setIsMovementFabVisible(scrollBottom < pageBottom - threshold);
     };
 
-    const scheduleUpdate = () => {
+    const scheduleUpdate = (shouldMarkUserScroll = false) => {
+      if (shouldMarkUserScroll && desktopQuery.matches) {
+        hasUserScrolledInventoryRef.current = true;
+      }
+
       if (animationFrame) {
         return;
       }
@@ -355,17 +367,31 @@ function Inventory() {
       });
     };
 
-    updateFabVisibility();
-    window.addEventListener("scroll", scheduleUpdate, { passive: true });
-    window.addEventListener("resize", scheduleUpdate);
+    const handleScroll = () => scheduleUpdate(false);
+    const handleWheel = () => scheduleUpdate(true);
+    const handleKeyDown = (event) => {
+      if (
+        ["ArrowDown", "ArrowUp", "End", "Home", "PageDown", "PageUp", " "].includes(event.key)
+      ) {
+        scheduleUpdate(true);
+      }
+    };
+
+    setIsMovementFabVisible(true);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleScroll);
     desktopQuery.addEventListener("change", updateFabVisibility);
 
     return () => {
       if (animationFrame) {
         window.cancelAnimationFrame(animationFrame);
       }
-      window.removeEventListener("scroll", scheduleUpdate);
-      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleScroll);
       desktopQuery.removeEventListener("change", updateFabVisibility);
     };
   }, []);
