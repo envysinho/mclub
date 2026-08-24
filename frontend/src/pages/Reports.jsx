@@ -11,6 +11,15 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCashRegister, getDailyReport, getMonthlyReport } from "@/lib/api";
@@ -28,6 +37,51 @@ const REPORT_TYPE_OPTIONS = [
   { value: "daily", label: "Diario" },
   { value: "monthly", label: "Mensual" },
 ];
+const MONTHLY_MOVEMENTS_PAGE_SIZE = 10;
+
+function buildPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => ({
+      type: "page",
+      value: index + 1,
+    }));
+  }
+
+  const visiblePages = new Set([1, totalPages]);
+  const leftSibling = Math.max(2, currentPage - 1);
+  const rightSibling = Math.min(totalPages - 1, currentPage + 1);
+
+  for (let page = leftSibling; page <= rightSibling; page += 1) {
+    visiblePages.add(page);
+  }
+
+  if (currentPage <= 4) {
+    for (let page = 2; page <= Math.min(5, totalPages - 1); page += 1) {
+      visiblePages.add(page);
+    }
+  }
+
+  if (currentPage >= totalPages - 3) {
+    for (let page = Math.max(2, totalPages - 4); page <= totalPages - 1; page += 1) {
+      visiblePages.add(page);
+    }
+  }
+
+  const sortedPages = [...visiblePages].sort((firstPage, secondPage) => firstPage - secondPage);
+
+  return sortedPages.reduce((items, page, index) => {
+    const previousPage = sortedPages[index - 1];
+    if (previousPage && page - previousPage > 1) {
+      if (page - previousPage === 2) {
+        items.push({ type: "page", value: previousPage + 1 });
+      } else {
+        items.push({ type: "ellipsis", key: `${previousPage}-${page}` });
+      }
+    }
+    items.push({ type: "page", value: page });
+    return items;
+  }, []);
+}
 
 function ReportStat({ icon: Icon, label, value, hint, className }) {
   return (
@@ -289,6 +343,7 @@ function Reports() {
   const [isDailyLoading, setIsDailyLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dailyError, setDailyError] = useState(null);
+  const [monthlyMovementsPage, setMonthlyMovementsPage] = useState(1);
 
   const handleUnauthorized = useCallback(() => {
     logout();
@@ -503,6 +558,78 @@ function Reports() {
   const activeError = reportType === "monthly" ? error : dailyError;
   const dailyExpenses = dailyReport?.cashRegister?.expenses ?? [];
   const monthlyExpenses = report?.expenses ?? [];
+  const monthlyMovements = report?.movements ?? [];
+  const totalMonthlyMovementPages = Math.max(
+    1,
+    Math.ceil(monthlyMovements.length / MONTHLY_MOVEMENTS_PAGE_SIZE)
+  );
+  const monthlyMovementsPageStart = (monthlyMovementsPage - 1) * MONTHLY_MOVEMENTS_PAGE_SIZE;
+  const paginatedMonthlyMovements = monthlyMovements.slice(
+    monthlyMovementsPageStart,
+    monthlyMovementsPageStart + MONTHLY_MOVEMENTS_PAGE_SIZE
+  );
+  const monthlyMovementPageItems = buildPaginationItems(
+    monthlyMovementsPage,
+    totalMonthlyMovementPages
+  );
+  const visibleMonthlyMovementStart = monthlyMovements.length ? monthlyMovementsPageStart + 1 : 0;
+  const visibleMonthlyMovementEnd = Math.min(
+    monthlyMovementsPageStart + MONTHLY_MOVEMENTS_PAGE_SIZE,
+    monthlyMovements.length
+  );
+
+  useEffect(() => {
+    setMonthlyMovementsPage((currentPage) => Math.min(currentPage, totalMonthlyMovementPages));
+  }, [totalMonthlyMovementPages]);
+
+  useEffect(() => {
+    setMonthlyMovementsPage(1);
+  }, [month]);
+
+  const renderMonthlyMovementsPagination = () =>
+    totalMonthlyMovementPages > 1 && (
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {visibleMonthlyMovementStart}-{visibleMonthlyMovementEnd} de{" "}
+          {monthlyMovements.length}
+        </p>
+        <Pagination className="sm:mx-0 sm:w-auto">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                disabled={monthlyMovementsPage === 1}
+                onClick={() => setMonthlyMovementsPage((page) => Math.max(1, page - 1))}
+              />
+            </PaginationItem>
+            {monthlyMovementPageItems.map((item) => (
+              <PaginationItem key={item.type === "page" ? item.value : item.key}>
+                {item.type === "page" ? (
+                  <PaginationButton
+                    isActive={monthlyMovementsPage === item.value}
+                    aria-label={`Ir a pagina ${item.value}`}
+                    onClick={() => setMonthlyMovementsPage(item.value)}
+                  >
+                    {item.value}
+                  </PaginationButton>
+                ) : (
+                  <PaginationEllipsis />
+                )}
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                disabled={monthlyMovementsPage === totalMonthlyMovementPages}
+                onClick={() =>
+                  setMonthlyMovementsPage((page) =>
+                    Math.min(totalMonthlyMovementPages, page + 1)
+                  )
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -886,7 +1013,7 @@ function Reports() {
             ) : report?.movements?.length ? (
               <>
                 <div className="grid gap-3 md:hidden">
-                  {report.movements.map((movement) => (
+                  {paginatedMonthlyMovements.map((movement) => (
                     <ReportMovementMobileCard
                       key={movement.id}
                       movement={movement}
@@ -911,7 +1038,7 @@ function Reports() {
                       </tr>
                     </thead>
                     <tbody>
-                      {report.movements.map((movement) => (
+                      {paginatedMonthlyMovements.map((movement) => (
                         <tr key={movement.id} className="border-b last:border-0">
                           <td className="py-3 pl-4 pr-4 whitespace-nowrap">
                             {formatDate(movement.createdAt)}
@@ -938,6 +1065,7 @@ function Reports() {
                     </tbody>
                   </table>
                 </div>
+                {renderMonthlyMovementsPagination()}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">No hay movimientos en este mes.</p>
