@@ -25,6 +25,7 @@ import {
   Pagination,
   PaginationButton,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
@@ -61,11 +62,56 @@ const EMPTY_MOVEMENT = {
 };
 
 const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
-const INVENTORY_PAGE_SIZE = 5;
+const INVENTORY_SUMMARY_PAGE_SIZE = 5;
+const STOCK_MOVEMENTS_PAGE_SIZE = 10;
 
 function signedQuantity(value) {
   if (value > 0) return `+${value}`;
   return String(value);
+}
+
+function buildPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => ({
+      type: "page",
+      value: index + 1,
+    }));
+  }
+
+  const visiblePages = new Set([1, totalPages]);
+  const leftSibling = Math.max(2, currentPage - 1);
+  const rightSibling = Math.min(totalPages - 1, currentPage + 1);
+
+  for (let page = leftSibling; page <= rightSibling; page += 1) {
+    visiblePages.add(page);
+  }
+
+  if (currentPage <= 4) {
+    for (let page = 2; page <= Math.min(5, totalPages - 1); page += 1) {
+      visiblePages.add(page);
+    }
+  }
+
+  if (currentPage >= totalPages - 3) {
+    for (let page = Math.max(2, totalPages - 4); page <= totalPages - 1; page += 1) {
+      visiblePages.add(page);
+    }
+  }
+
+  const sortedPages = [...visiblePages].sort((firstPage, secondPage) => firstPage - secondPage);
+
+  return sortedPages.reduce((items, page, index) => {
+    const previousPage = sortedPages[index - 1];
+    if (previousPage && page - previousPage > 1) {
+      if (page - previousPage === 2) {
+        items.push({ type: "page", value: previousPage + 1 });
+      } else {
+        items.push({ type: "ellipsis", key: `${previousPage}-${page}` });
+      }
+    }
+    items.push({ type: "page", value: page });
+    return items;
+  }, []);
 }
 
 function InventoryStatCard({ icon: Icon, label, value, hint }) {
@@ -236,29 +282,35 @@ function Inventory() {
   const inventoryProducts = inventory?.products ?? [];
   const stockMovements = inventory?.movements ?? [];
 
-  const totalSummaryPages = Math.max(1, Math.ceil(inventoryProducts.length / INVENTORY_PAGE_SIZE));
-  const summaryPageStart = (summaryPage - 1) * INVENTORY_PAGE_SIZE;
+  const totalSummaryPages = Math.max(
+    1,
+    Math.ceil(inventoryProducts.length / INVENTORY_SUMMARY_PAGE_SIZE)
+  );
+  const summaryPageStart = (summaryPage - 1) * INVENTORY_SUMMARY_PAGE_SIZE;
   const paginatedInventoryProducts = inventoryProducts.slice(
     summaryPageStart,
-    summaryPageStart + INVENTORY_PAGE_SIZE
+    summaryPageStart + INVENTORY_SUMMARY_PAGE_SIZE
   );
-  const summaryPageNumbers = Array.from({ length: totalSummaryPages }, (_, index) => index + 1);
+  const summaryPageItems = buildPaginationItems(summaryPage, totalSummaryPages);
   const visibleSummaryStart = inventoryProducts.length ? summaryPageStart + 1 : 0;
   const visibleSummaryEnd = Math.min(
-    summaryPageStart + INVENTORY_PAGE_SIZE,
+    summaryPageStart + INVENTORY_SUMMARY_PAGE_SIZE,
     inventoryProducts.length
   );
 
-  const totalMovementPages = Math.max(1, Math.ceil(stockMovements.length / INVENTORY_PAGE_SIZE));
-  const movementPageStart = (movementsPage - 1) * INVENTORY_PAGE_SIZE;
+  const totalMovementPages = Math.max(
+    1,
+    Math.ceil(stockMovements.length / STOCK_MOVEMENTS_PAGE_SIZE)
+  );
+  const movementPageStart = (movementsPage - 1) * STOCK_MOVEMENTS_PAGE_SIZE;
   const paginatedStockMovements = stockMovements.slice(
     movementPageStart,
-    movementPageStart + INVENTORY_PAGE_SIZE
+    movementPageStart + STOCK_MOVEMENTS_PAGE_SIZE
   );
-  const movementPageNumbers = Array.from({ length: totalMovementPages }, (_, index) => index + 1);
+  const movementPageItems = buildPaginationItems(movementsPage, totalMovementPages);
   const visibleMovementStart = stockMovements.length ? movementPageStart + 1 : 0;
   const visibleMovementEnd = Math.min(
-    movementPageStart + INVENTORY_PAGE_SIZE,
+    movementPageStart + STOCK_MOVEMENTS_PAGE_SIZE,
     stockMovements.length
   );
 
@@ -278,7 +330,7 @@ function Inventory() {
   const renderInventoryPagination = ({
     currentPage,
     totalPages,
-    pageNumbers,
+    pageItems,
     visibleStart,
     visibleEnd,
     totalItems,
@@ -297,15 +349,19 @@ function Inventory() {
                 onClick={() => onPageChange((page) => Math.max(1, page - 1))}
               />
             </PaginationItem>
-            {pageNumbers.map((page) => (
-              <PaginationItem key={page}>
-                <PaginationButton
-                  isActive={currentPage === page}
-                  aria-label={`Ir a pagina ${page}`}
-                  onClick={() => onPageChange(page)}
-                >
-                  {page}
-                </PaginationButton>
+            {pageItems.map((item) => (
+              <PaginationItem key={item.type === "page" ? item.value : item.key}>
+                {item.type === "page" ? (
+                  <PaginationButton
+                    isActive={currentPage === item.value}
+                    aria-label={`Ir a pagina ${item.value}`}
+                    onClick={() => onPageChange(item.value)}
+                  >
+                    {item.value}
+                  </PaginationButton>
+                ) : (
+                  <PaginationEllipsis />
+                )}
               </PaginationItem>
             ))}
             <PaginationItem>
@@ -742,7 +798,7 @@ function Inventory() {
             {renderInventoryPagination({
               currentPage: summaryPage,
               totalPages: totalSummaryPages,
-              pageNumbers: summaryPageNumbers,
+              pageItems: summaryPageItems,
               visibleStart: visibleSummaryStart,
               visibleEnd: visibleSummaryEnd,
               totalItems: inventoryProducts.length,
@@ -814,7 +870,7 @@ function Inventory() {
             {renderInventoryPagination({
               currentPage: movementsPage,
               totalPages: totalMovementPages,
-              pageNumbers: movementPageNumbers,
+              pageItems: movementPageItems,
               visibleStart: visibleMovementStart,
               visibleEnd: visibleMovementEnd,
               totalItems: stockMovements.length,
