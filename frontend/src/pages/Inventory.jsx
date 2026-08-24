@@ -231,6 +231,7 @@ function Inventory() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [summaryPage, setSummaryPage] = useState(1);
   const [movementsPage, setMovementsPage] = useState(1);
+  const [isMovementFabVisible, setIsMovementFabVisible] = useState(true);
 
   const canManageInventory = user?.role === "SUDO" || user?.role === "ADMIN";
 
@@ -326,6 +327,48 @@ function Inventory() {
     setSummaryPage(1);
     setMovementsPage(1);
   }, [month]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    let animationFrame = null;
+
+    const updateFabVisibility = () => {
+      if (!desktopQuery.matches) {
+        setIsMovementFabVisible(true);
+        return;
+      }
+
+      const threshold = 160;
+      const scrollBottom = window.scrollY + window.innerHeight;
+      const pageBottom = document.documentElement.scrollHeight;
+      setIsMovementFabVisible(scrollBottom < pageBottom - threshold);
+    };
+
+    const scheduleUpdate = () => {
+      if (animationFrame) {
+        return;
+      }
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null;
+        updateFabVisibility();
+      });
+    };
+
+    updateFabVisibility();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    desktopQuery.addEventListener("change", updateFabVisibility);
+
+    return () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      desktopQuery.removeEventListener("change", updateFabVisibility);
+    };
+  }, []);
 
   const renderInventoryPagination = ({
     currentPage,
@@ -887,7 +930,12 @@ function Inventory() {
           type="button"
           aria-label="Movimiento de stock"
           title="Movimiento de stock"
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
+          className={cn(
+            "fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg transition-all duration-200 sm:px-5 md:bottom-6 md:right-6",
+            isMovementFabVisible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-2 opacity-0"
+          )}
           onClick={() => {
             resetMovementForm();
             setShowMovementForm(true);
