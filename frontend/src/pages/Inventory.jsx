@@ -22,6 +22,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -53,6 +61,7 @@ const EMPTY_MOVEMENT = {
 };
 
 const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
+const INVENTORY_PAGE_SIZE = 5;
 
 function signedQuantity(value) {
   if (value > 0) return `+${value}`;
@@ -174,6 +183,8 @@ function Inventory() {
   const [movementForm, setMovementForm] = useState(EMPTY_MOVEMENT);
   const [formError, setFormError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [summaryPage, setSummaryPage] = useState(1);
+  const [movementsPage, setMovementsPage] = useState(1);
 
   const canManageInventory = user?.role === "SUDO" || user?.role === "ADMIN";
 
@@ -221,6 +232,92 @@ function Inventory() {
     () => monthOptions.find((option) => option.value === month) ?? monthOptions[0],
     [month, monthOptions]
   );
+
+  const inventoryProducts = inventory?.products ?? [];
+  const stockMovements = inventory?.movements ?? [];
+
+  const totalSummaryPages = Math.max(1, Math.ceil(inventoryProducts.length / INVENTORY_PAGE_SIZE));
+  const summaryPageStart = (summaryPage - 1) * INVENTORY_PAGE_SIZE;
+  const paginatedInventoryProducts = inventoryProducts.slice(
+    summaryPageStart,
+    summaryPageStart + INVENTORY_PAGE_SIZE
+  );
+  const summaryPageNumbers = Array.from({ length: totalSummaryPages }, (_, index) => index + 1);
+  const visibleSummaryStart = inventoryProducts.length ? summaryPageStart + 1 : 0;
+  const visibleSummaryEnd = Math.min(
+    summaryPageStart + INVENTORY_PAGE_SIZE,
+    inventoryProducts.length
+  );
+
+  const totalMovementPages = Math.max(1, Math.ceil(stockMovements.length / INVENTORY_PAGE_SIZE));
+  const movementPageStart = (movementsPage - 1) * INVENTORY_PAGE_SIZE;
+  const paginatedStockMovements = stockMovements.slice(
+    movementPageStart,
+    movementPageStart + INVENTORY_PAGE_SIZE
+  );
+  const movementPageNumbers = Array.from({ length: totalMovementPages }, (_, index) => index + 1);
+  const visibleMovementStart = stockMovements.length ? movementPageStart + 1 : 0;
+  const visibleMovementEnd = Math.min(
+    movementPageStart + INVENTORY_PAGE_SIZE,
+    stockMovements.length
+  );
+
+  useEffect(() => {
+    setSummaryPage((currentPage) => Math.min(currentPage, totalSummaryPages));
+  }, [totalSummaryPages]);
+
+  useEffect(() => {
+    setMovementsPage((currentPage) => Math.min(currentPage, totalMovementPages));
+  }, [totalMovementPages]);
+
+  useEffect(() => {
+    setSummaryPage(1);
+    setMovementsPage(1);
+  }, [month]);
+
+  const renderInventoryPagination = ({
+    currentPage,
+    totalPages,
+    pageNumbers,
+    visibleStart,
+    visibleEnd,
+    totalItems,
+    onPageChange,
+  }) =>
+    totalPages > 1 && (
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {visibleStart}-{visibleEnd} de {totalItems}
+        </p>
+        <Pagination className="sm:mx-0 sm:w-auto">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                disabled={currentPage === 1}
+                onClick={() => onPageChange((page) => Math.max(1, page - 1))}
+              />
+            </PaginationItem>
+            {pageNumbers.map((page) => (
+              <PaginationItem key={page}>
+                <PaginationButton
+                  isActive={currentPage === page}
+                  aria-label={`Ir a pagina ${page}`}
+                  onClick={() => onPageChange(page)}
+                >
+                  {page}
+                </PaginationButton>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                disabled={currentPage === totalPages}
+                onClick={() => onPageChange((page) => Math.min(totalPages, page + 1))}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
 
   const resetMovementForm = () => {
     setMovementForm(EMPTY_MOVEMENT);
@@ -600,7 +697,7 @@ function Inventory() {
         ) : inventory?.products?.length ? (
           <>
             <div className="grid gap-3 md:hidden">
-              {inventory.products.map((product) => (
+              {paginatedInventoryProducts.map((product) => (
                 <InventoryProductMobileCard
                   key={product.productId}
                   product={product}
@@ -624,7 +721,7 @@ function Inventory() {
                 </tr>
               </thead>
               <tbody>
-                {inventory.products.map((product) => (
+                {paginatedInventoryProducts.map((product) => (
                   <tr key={product.productId} className="border-b last:border-0">
                     <td className="py-3 pl-4 pr-4 font-medium">{product.productName}</td>
                     <td className="py-3 pr-4 text-right">{product.openingStock}</td>
@@ -642,6 +739,15 @@ function Inventory() {
               </tbody>
               </table>
             </div>
+            {renderInventoryPagination({
+              currentPage: summaryPage,
+              totalPages: totalSummaryPages,
+              pageNumbers: summaryPageNumbers,
+              visibleStart: visibleSummaryStart,
+              visibleEnd: visibleSummaryEnd,
+              totalItems: inventoryProducts.length,
+              onPageChange: setSummaryPage,
+            })}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
@@ -658,7 +764,7 @@ function Inventory() {
         ) : inventory?.movements?.length ? (
           <>
             <div className="grid gap-3 md:hidden">
-              {inventory.movements.map((movement) => (
+              {paginatedStockMovements.map((movement) => (
                 <StockMovementMobileCard key={movement.id} movement={movement} />
               ))}
             </div>
@@ -675,7 +781,7 @@ function Inventory() {
                 </tr>
               </thead>
               <tbody>
-                {inventory.movements.map((movement) => (
+                {paginatedStockMovements.map((movement) => (
                   <tr key={movement.id} className="border-b last:border-0">
                     <td className="py-3 pl-4 pr-4 whitespace-nowrap">
                       {formatDate(movement.createdAt)}
@@ -705,6 +811,15 @@ function Inventory() {
               </tbody>
               </table>
             </div>
+            {renderInventoryPagination({
+              currentPage: movementsPage,
+              totalPages: totalMovementPages,
+              pageNumbers: movementPageNumbers,
+              visibleStart: visibleMovementStart,
+              visibleEnd: visibleMovementEnd,
+              totalItems: stockMovements.length,
+              onPageChange: setMovementsPage,
+            })}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">No hay movimientos en este mes.</p>
