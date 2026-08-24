@@ -17,6 +17,11 @@ import { validateMembershipToken } from "@/lib/api";
 import { formatDate } from "@/lib/constants";
 
 const DUPLICATE_SCAN_WINDOW_MS = 4000;
+const FRONT_CAMERA_CONSTRAINTS = {
+  video: {
+    facingMode: { exact: "user" },
+  },
+};
 
 function extractToken(value) {
   if (!value) {
@@ -131,8 +136,8 @@ function MembershipQrContinuous() {
 
     try {
       const reader = new BrowserMultiFormatReader();
-      const controls = await reader.decodeFromVideoDevice(
-        undefined,
+      const controls = await reader.decodeFromConstraints(
+        FRONT_CAMERA_CONSTRAINTS,
         videoRef.current,
         (decoded, error) => {
           if (decoded) {
