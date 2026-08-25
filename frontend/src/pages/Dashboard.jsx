@@ -195,12 +195,14 @@ function Dashboard() {
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [movementPage, setMovementPage] = useState(1);
+  const [isSaleFabVisible, setIsSaleFabVisible] = useState(true);
 
   const canDeleteMovements = user?.role === "SUDO" || user?.role === "ADMIN";
   const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
 
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
+  const hasUserScrolledDashboardRef = useRef(false);
 
   const openDatePicker = (ref) => {
     if (!ref?.current) return;
@@ -307,6 +309,83 @@ function Dashboard() {
   useEffect(() => {
     setMovementPage(1);
   }, [data?.recentMovements?.[0]?.id]);
+
+  useEffect(() => {
+    if (isLoading) {
+      hasUserScrolledDashboardRef.current = false;
+      setIsSaleFabVisible(true);
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    let animationFrame = null;
+    let lastScrollY = window.scrollY;
+
+    const updateFabVisibility = () => {
+      const currentScrollY = window.scrollY;
+      const isScrollingUp = currentScrollY < lastScrollY - 4;
+      const isScrollingDown = currentScrollY > lastScrollY + 4;
+      lastScrollY = currentScrollY;
+
+      if (!desktopQuery.matches || !hasUserScrolledDashboardRef.current) {
+        setIsSaleFabVisible(true);
+        return;
+      }
+
+      if (isScrollingUp) {
+        setIsSaleFabVisible(true);
+        return;
+      }
+
+      if (isScrollingDown) {
+        setIsSaleFabVisible(false);
+      }
+    };
+
+    const scheduleUpdate = (shouldMarkUserScroll = false) => {
+      if (shouldMarkUserScroll && desktopQuery.matches) {
+        hasUserScrolledDashboardRef.current = true;
+      }
+
+      if (animationFrame) {
+        return;
+      }
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null;
+        updateFabVisibility();
+      });
+    };
+
+    const handleScroll = () => scheduleUpdate(false);
+    const handleWheel = () => scheduleUpdate(true);
+    const handleKeyDown = (event) => {
+      if (
+        ["ArrowDown", "ArrowUp", "End", "Home", "PageDown", "PageUp", " "].includes(event.key)
+      ) {
+        scheduleUpdate(true);
+      }
+    };
+
+    setIsSaleFabVisible(true);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleScroll);
+    desktopQuery.addEventListener("change", updateFabVisibility);
+
+    return () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleScroll);
+      desktopQuery.removeEventListener("change", updateFabVisibility);
+    };
+  }, []);
 
   const openSaleSheet = () => {
     setSaleForm({
@@ -1115,7 +1194,12 @@ function Dashboard() {
         type="button"
         aria-label="Nueva venta"
         title="Nueva venta"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg sm:px-5 md:bottom-6 md:right-6"
+        className={cn(
+          "fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-40 h-14 rounded-full px-4 shadow-lg transition-all duration-200 sm:px-5 md:bottom-6 md:right-6",
+          isSaleFabVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-2 opacity-0"
+        )}
         onClick={openSaleSheet}
       >
         <ShoppingCart className="size-5" />

@@ -48,23 +48,23 @@ function AppSidebar({ currentPage, onNavigate }) {
 
   return (
     <Sidebar collapsible="none">
-      <SidebarHeader className="overflow-hidden border-b border-sidebar-border px-3 py-3 pr-12 md:p-2 md:pr-2">
-        <div className="flex h-12 min-w-0 items-center overflow-hidden px-2 md:h-[39px] md:px-4">
+      <SidebarHeader className="overflow-hidden border-b border-sidebar-border px-3 py-3 pr-12 lg:p-2 lg:pr-2">
+        <div className="flex h-12 min-w-0 items-center overflow-hidden px-2 lg:h-[39px] lg:px-4">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-xs tracking-normal text-sidebar-foreground/70 md:text-[10.3px]">
+              <span className="truncate text-xs tracking-normal text-sidebar-foreground/70 lg:text-[10.3px]">
                 Gestión integral
               </span>
-              <strong className="truncate text-lg font-semibold md:text-sm">M Club Gym</strong>
+              <strong className="truncate text-lg font-semibold lg:text-sm">M Club Gym</strong>
             </div>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup className="gap-3 p-3 md:gap-2 md:p-2">
+        <SidebarGroup className="gap-3 p-3 lg:gap-2 lg:p-2">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-y-1 md:gap-y-0.5">
+            <SidebarMenu className="gap-y-1 lg:gap-y-0.5">
               {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user?.role)).map(({ id, icon: Icon, label }) => (
                 <SidebarMenuItem key={id}>
                   <SidebarMenuButton
