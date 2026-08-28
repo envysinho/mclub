@@ -78,6 +78,41 @@ const EMPTY_SALE_FORM = {
 };
 
 const RECENT_MOVEMENTS_PAGE_SIZE = 9;
+const TEXT_ONLY_INPUT_PATTERN = /[^\p{L}\s]/gu;
+const TEXT_ONLY_VALUE_PATTERN = /^[\p{L}\s]+$/u;
+const NINE_DIGIT_PHONE_PATTERN = /^\d{9}$/;
+const POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
+
+function sanitizeTextInput(value) {
+  return value.replace(TEXT_ONLY_INPUT_PATTERN, "");
+}
+
+function sanitizePhoneInput(value) {
+  return value.replace(/\D/g, "").slice(0, 9);
+}
+
+function sanitizePositiveIntegerInput(value) {
+  return value.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function preventInvalidQuantityKey(event) {
+  if (event.key.length === 1 && !/\d/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidQuantityBeforeInput(event) {
+  if (event.data && /\D/.test(event.data)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidQuantityPaste(event) {
+  const value = event.clipboardData.getData("text");
+  if (!POSITIVE_INTEGER_PATTERN.test(value)) {
+    event.preventDefault();
+  }
+}
 
 function formatDateInput(date) {
   const year = date.getFullYear();
@@ -450,6 +485,14 @@ function Dashboard() {
 
     try {
       let clientId = saleForm.clientId ? Number(saleForm.clientId) : null;
+      let productQuantity = null;
+
+      if (saleForm.type === "product") {
+        if (!POSITIVE_INTEGER_PATTERN.test(saleForm.quantity)) {
+          throw new Error("La cantidad debe ser un número entero positivo");
+        }
+        productQuantity = Number(saleForm.quantity);
+      }
 
       let mixedPayment = {};
       if (saleForm.paymentMethod === "MIXTO") {
@@ -472,11 +515,25 @@ function Dashboard() {
       }
 
       if (saleForm.clientMode === "new") {
+        const firstName = saleForm.client.firstName.trim();
+        const lastName = saleForm.client.lastName.trim();
+        const phone = saleForm.client.phone.trim();
+
+        if (!firstName || !TEXT_ONLY_VALUE_PATTERN.test(firstName)) {
+          throw new Error("Ingresa nombres solo con letras y espacios");
+        }
+        if (!lastName || !TEXT_ONLY_VALUE_PATTERN.test(lastName)) {
+          throw new Error("Ingresa apellidos solo con letras y espacios");
+        }
+        if (phone && !NINE_DIGIT_PHONE_PATTERN.test(phone)) {
+          throw new Error("El teléfono debe tener exactamente 9 dígitos");
+        }
+
         const createdClient = await createClient(
           {
-            firstName: saleForm.client.firstName.trim(),
-            lastName: saleForm.client.lastName.trim(),
-            phone: saleForm.client.phone.trim() || null,
+            firstName,
+            lastName,
+            phone: phone || null,
             documentId: "",
             active: true,
           },
@@ -515,7 +572,7 @@ function Dashboard() {
         await sellProduct(
           {
             productId: Number(saleForm.productId),
-            quantity: Number(saleForm.quantity),
+            quantity: productQuantity,
             clientId,
             paymentMethod: saleForm.paymentMethod,
             ...mixedPayment,
@@ -760,7 +817,10 @@ function Dashboard() {
                         onChange={(event) =>
                           setSaleForm({
                             ...saleForm,
-                            client: { ...saleForm.client, firstName: event.target.value },
+                            client: {
+                              ...saleForm.client,
+                              firstName: sanitizeTextInput(event.target.value),
+                            },
                           })
                         }
                         required
@@ -774,7 +834,10 @@ function Dashboard() {
                         onChange={(event) =>
                           setSaleForm({
                             ...saleForm,
-                            client: { ...saleForm.client, lastName: event.target.value },
+                            client: {
+                              ...saleForm.client,
+                              lastName: sanitizeTextInput(event.target.value),
+                            },
                           })
                         }
                         required
@@ -785,11 +848,18 @@ function Dashboard() {
                     <Label htmlFor="salePhone">Teléfono</Label>
                     <Input
                       id="salePhone"
+                      inputMode="numeric"
+                      maxLength={9}
+                      pattern="[0-9]{9}"
+                      title="Ingresa exactamente 9 dígitos"
                       value={saleForm.client.phone}
                       onChange={(event) =>
                         setSaleForm({
                           ...saleForm,
-                          client: { ...saleForm.client, phone: event.target.value },
+                          client: {
+                            ...saleForm.client,
+                            phone: sanitizePhoneInput(event.target.value),
+                          },
                         })
                       }
                     />
@@ -919,9 +989,19 @@ function Dashboard() {
                       id="saleQuantity"
                       type="number"
                       min="1"
+                      step="1"
+                      inputMode="numeric"
+                      pattern="[1-9][0-9]*"
+                      title="Ingresa un número entero positivo"
                       value={saleForm.quantity}
+                      onBeforeInput={preventInvalidQuantityBeforeInput}
+                      onKeyDown={preventInvalidQuantityKey}
+                      onPaste={preventInvalidQuantityPaste}
                       onChange={(event) =>
-                        setSaleForm({ ...saleForm, quantity: event.target.value })
+                        setSaleForm({
+                          ...saleForm,
+                          quantity: sanitizePositiveIntegerInput(event.target.value),
+                        })
                       }
                       required
                     />

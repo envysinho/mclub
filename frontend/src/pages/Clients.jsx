@@ -4,9 +4,11 @@ import {
   CheckCircle2,
   LayoutGrid,
   List,
+  Loader2,
   MessageCircle,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -42,6 +44,7 @@ import {
   listClients,
   listMembershipPlans,
   registerClientAttendance,
+  renewMembership,
   updateClient,
   updateMembershipPlan,
 } from "@/lib/api";
@@ -49,6 +52,7 @@ import {
   formatCurrency,
   formatDate,
   fullName,
+  PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -68,8 +72,148 @@ const EMPTY_PLAN = {
   description: "",
 };
 
+const EMPTY_RENEWAL_FORM = {
+  planId: "",
+  startDate: "",
+  endDate: "",
+  paymentMethod: "EFECTIVO",
+  yapeAmount: "",
+  cashAmount: "",
+  confirmed: false,
+  datesEdited: false,
+};
+
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const CLIENTS_PAGE_SIZE = 13;
+const TEXT_ONLY_INPUT_PATTERN = /[^\p{L}\s]/gu;
+const TEXT_ONLY_VALUE_PATTERN = /^[\p{L}\s]+$/u;
+const NINE_DIGIT_PHONE_PATTERN = /^\d{9}$/;
+const POSITIVE_DECIMAL_PATTERN = /^(?=.*[1-9])\d+(?:\.\d{1,2})?$/;
+const POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
+
+function sanitizeTextInput(value) {
+  return value.replace(TEXT_ONLY_INPUT_PATTERN, "");
+}
+
+function sanitizePhoneInput(value) {
+  return value.replace(/\D/g, "").slice(0, 9);
+}
+
+function sanitizePositiveDecimalInput(value) {
+  const normalizedValue = value.replace(",", ".");
+  const [integerPart, ...decimalParts] = normalizedValue.replace(/[^\d.]/g, "").split(".");
+  const integerValue =
+    integerPart === "" && decimalParts.length
+      ? "0"
+      : integerPart.replace(/^0+(?=\d)/, "");
+  const decimalPart = decimalParts.join("").slice(0, 2);
+
+  return decimalParts.length ? `${integerValue}.${decimalPart}` : integerValue;
+}
+
+function sanitizePositiveIntegerInput(value) {
+  return value.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function preventInvalidDecimalKey(event) {
+  if (event.key.length === 1 && !/[\d.]/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidDecimalBeforeInput(event) {
+  const data = event.data?.replace(",", ".");
+  if (data && /[^\d.]/.test(data)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidDecimalPaste(event) {
+  const value = sanitizePositiveDecimalInput(event.clipboardData.getData("text"));
+  if (!value) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerKey(event) {
+  if (event.key.length === 1 && !/\d/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerBeforeInput(event) {
+  if (event.data && /\D/.test(event.data)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerPaste(event) {
+  const value = event.clipboardData.getData("text");
+  if (!POSITIVE_INTEGER_PATTERN.test(value)) {
+    event.preventDefault();
+  }
+}
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateValueToInput(dateValue) {
+  if (!dateValue) {
+    return "";
+  }
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return formatDateInput(date);
+}
+
+function addDaysToInputDate(dateValue, days) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + Number(days || 0));
+  return formatDateInput(date);
+}
+
+function moneyToCents(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? Math.round(amount * 100) : Number.NaN;
+}
+
+function buildMixedPaymentPayload(form, total) {
+  if (form.paymentMethod !== "MIXTO") {
+    return {};
+  }
+
+  const yape = Number(form.yapeAmount);
+  const cash = Number(form.cashAmount);
+  const yapeCents = moneyToCents(form.yapeAmount);
+  const cashCents = moneyToCents(form.cashAmount);
+  const totalCents = moneyToCents(total);
+
+  if (
+    form.yapeAmount === "" ||
+    form.cashAmount === "" ||
+    !Number.isFinite(yapeCents) ||
+    !Number.isFinite(cashCents) ||
+    yapeCents < 0 ||
+    cashCents < 0
+  ) {
+    throw new Error("Ingresa el monto en Yape y en efectivo");
+  }
+
+  if (yapeCents + cashCents !== totalCents) {
+    throw new Error("La suma de Yape y efectivo debe ser igual al total");
+  }
+
+  return { yapeAmount: yape, cashAmount: cash };
+}
 
 function getMembershipDaysRemaining(client) {
   if (!client.activeMembership?.endDate) {
@@ -182,6 +326,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const [attendanceNotice, setAttendanceNotice] = useState(null);
   const [isLoadingAttendances, setIsLoadingAttendances] = useState(false);
   const [recordingAttendanceId, setRecordingAttendanceId] = useState(null);
+  const [renewalClient, setRenewalClient] = useState(null);
+  const [renewalForm, setRenewalForm] = useState(EMPTY_RENEWAL_FORM);
+  const [renewalError, setRenewalError] = useState(null);
+  const [renewalNotice, setRenewalNotice] = useState(null);
+  const [isRenewing, setIsRenewing] = useState(false);
 
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -264,6 +413,12 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const clientPageNumbers = Array.from({ length: totalClientPages }, (_, index) => index + 1);
   const visibleClientStart = sortedClients.length ? clientPageStart + 1 : 0;
   const visibleClientEnd = Math.min(clientPageStart + CLIENTS_PAGE_SIZE, sortedClients.length);
+  const paymentMethodOptions = Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  }));
+  const selectedRenewalPlan = plans.find((plan) => plan.id === Number(renewalForm.planId));
+  const renewalAmount = selectedRenewalPlan?.price ?? 0;
 
   useEffect(() => {
     setClientPage((currentPage) => Math.min(currentPage, totalClientPages));
@@ -285,6 +440,13 @@ function Clients({ module = "clients", searchQuery = "" }) {
     setEditingPlan(null);
     setShowPlanForm(false);
     setFormError(null);
+  };
+
+  const resetRenewalForm = () => {
+    setRenewalClient(null);
+    setRenewalForm(EMPTY_RENEWAL_FORM);
+    setRenewalError(null);
+    setIsRenewing(false);
   };
 
   const openEditClient = (client) => {
@@ -312,20 +474,84 @@ function Clients({ module = "clients", searchQuery = "" }) {
     setFormError(null);
   };
 
+  const getSuggestedRenewalStartDate = (client) => {
+    const currentEndDate = dateValueToInput(client.activeMembership?.endDate);
+
+    if (currentEndDate) {
+      return addDaysToInputDate(currentEndDate, 1);
+    }
+
+    return formatDateInput(new Date());
+  };
+
+  const openRenewalSheet = (client) => {
+    const currentPlanId = client.activeMembership?.planId;
+    const defaultPlan =
+      plans.find((plan) => plan.id === Number(currentPlanId)) ?? plans[0] ?? null;
+    const startDate = getSuggestedRenewalStartDate(client);
+
+    setRenewalClient(client);
+    setRenewalForm({
+      ...EMPTY_RENEWAL_FORM,
+      planId: defaultPlan ? String(defaultPlan.id) : "",
+      startDate,
+      endDate: defaultPlan ? addDaysToInputDate(startDate, defaultPlan.durationDays) : "",
+    });
+    setRenewalError(null);
+  };
+
+  const handleRenewalPlanChange = (planId) => {
+    const plan = plans.find((currentPlan) => currentPlan.id === Number(planId));
+    setRenewalForm({
+      ...renewalForm,
+      planId,
+      endDate:
+        plan && renewalForm.startDate
+          ? addDaysToInputDate(renewalForm.startDate, plan.durationDays)
+          : "",
+    });
+  };
+
+  const handleRenewalStartDateChange = (startDate) => {
+    setRenewalForm({
+      ...renewalForm,
+      startDate,
+      datesEdited: true,
+      endDate:
+        selectedRenewalPlan && startDate
+          ? addDaysToInputDate(startDate, selectedRenewalPlan.durationDays)
+          : "",
+    });
+  };
+
   const handleClientSubmit = async (event) => {
     event.preventDefault();
     setFormError(null);
     setIsSubmitting(true);
 
-    const payload = {
-      ...clientForm,
-      firstName: clientForm.firstName.trim(),
-      lastName: clientForm.lastName.trim(),
-      phone: clientForm.phone.trim() || null,
-      documentId: clientForm.documentId.trim() || "",
-    };
-
     try {
+      const firstName = clientForm.firstName.trim();
+      const lastName = clientForm.lastName.trim();
+      const phone = clientForm.phone.trim();
+
+      if (!firstName || !TEXT_ONLY_VALUE_PATTERN.test(firstName)) {
+        throw new Error("Ingresa nombres solo con letras y espacios");
+      }
+      if (!lastName || !TEXT_ONLY_VALUE_PATTERN.test(lastName)) {
+        throw new Error("Ingresa apellidos solo con letras y espacios");
+      }
+      if (phone && !NINE_DIGIT_PHONE_PATTERN.test(phone)) {
+        throw new Error("El teléfono debe tener exactamente 9 dígitos");
+      }
+
+      const payload = {
+        ...clientForm,
+        firstName,
+        lastName,
+        phone: phone || null,
+        documentId: clientForm.documentId.trim() || "",
+      };
+
       if (editingClient) {
         await updateClient(editingClient.id, payload, handleUnauthorized);
       } else {
@@ -345,14 +571,22 @@ function Clients({ module = "clients", searchQuery = "" }) {
     setFormError(null);
     setIsSubmitting(true);
 
-    const payload = {
-      name: planForm.name.trim(),
-      price: Number(planForm.price),
-      durationDays: Number(planForm.durationDays),
-      description: planForm.description.trim() || null,
-    };
-
     try {
+      const price = planForm.price.trim();
+      if (!POSITIVE_DECIMAL_PATTERN.test(price)) {
+        throw new Error("El precio debe ser un decimal positivo con máximo 2 decimales");
+      }
+      if (!POSITIVE_INTEGER_PATTERN.test(planForm.durationDays)) {
+        throw new Error("La duración debe ser un número entero positivo");
+      }
+
+      const payload = {
+        name: planForm.name.trim(),
+        price: Number(price),
+        durationDays: Number(planForm.durationDays),
+        description: planForm.description.trim() || null,
+      };
+
       if (editingPlan) {
         await updateMembershipPlan(editingPlan.id, payload, handleUnauthorized);
       } else {
@@ -364,6 +598,49 @@ function Clients({ module = "clients", searchQuery = "" }) {
       setFormError(err instanceof Error ? err.message : "Error al guardar plan");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRenewalSubmit = async (event) => {
+    event.preventDefault();
+    setRenewalError(null);
+    setRenewalNotice(null);
+
+    try {
+      if (!renewalClient) {
+        throw new Error("Selecciona un cliente para renovar");
+      }
+
+      if (!renewalForm.confirmed) {
+        throw new Error("Confirma que el cliente acepto la renovacion");
+      }
+
+      if (!selectedRenewalPlan) {
+        throw new Error("Selecciona un plan de membresia");
+      }
+
+      const mixedPayment = buildMixedPaymentPayload(renewalForm, renewalAmount);
+      setIsRenewing(true);
+
+      await renewMembership(
+        {
+          clientId: renewalClient.id,
+          planId: selectedRenewalPlan.id,
+          startDate: renewalForm.datesEdited ? renewalForm.startDate || null : null,
+          endDate: renewalForm.datesEdited ? renewalForm.endDate || null : null,
+          paymentMethod: renewalForm.paymentMethod,
+          ...mixedPayment,
+        },
+        handleUnauthorized
+      );
+
+      const renewedClientName = fullName(renewalClient);
+      resetRenewalForm();
+      setRenewalNotice(`Renovacion registrada para ${renewedClientName}.`);
+      await loadData();
+    } catch (err) {
+      setRenewalError(err instanceof Error ? err.message : "Error al renovar membresia");
+      setIsRenewing(false);
     }
   };
 
@@ -577,6 +854,31 @@ function Clients({ module = "clients", searchQuery = "" }) {
     );
   };
 
+  const renderRenewalButton = (client) => {
+    const disabledReason = client.active === false
+      ? "Cliente inactivo"
+      : !client.activeMembership
+        ? "Cliente sin membresía activa"
+        : !plans.length
+          ? "No hay planes de membresía"
+          : null;
+    const isDisabled = Boolean(disabledReason);
+
+    return (
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="outline"
+        aria-label={`Renovar membresía de ${fullName(client)}`}
+        title={disabledReason ?? "Renovar membresía"}
+        disabled={isDisabled}
+        onClick={() => openRenewalSheet(client)}
+      >
+        <RefreshCw className="size-4" />
+      </Button>
+    );
+  };
+
   const renderAttendanceButtons = (client) => {
     const isRecording = recordingAttendanceId === client.id;
 
@@ -624,6 +926,11 @@ function Clients({ module = "clients", searchQuery = "" }) {
         {attendanceNotice && (
           <p className="mb-4 text-sm text-emerald-500" role="status">
             {attendanceNotice}
+          </p>
+        )}
+        {renewalNotice && (
+          <p className="mb-4 text-sm text-emerald-500" role="status">
+            {renewalNotice}
           </p>
         )}
 
@@ -725,6 +1032,193 @@ function Clients({ module = "clients", searchQuery = "" }) {
           </SheetContent>
         </Sheet>
 
+        <Sheet
+          open={Boolean(renewalClient)}
+          onOpenChange={(open) => {
+            if (!open) {
+              resetRenewalForm();
+            }
+          }}
+        >
+          <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+            <SheetHeader className="border-b pr-12">
+              <SheetTitle>Renovar membresía</SheetTitle>
+              <SheetDescription>
+                Registra la renovación cuando el cliente ya confirmó continuar.
+              </SheetDescription>
+            </SheetHeader>
+
+            <form onSubmit={handleRenewalSubmit} className="grid gap-4 px-4 pb-4">
+              {renewalClient && (
+                <div className="grid gap-3 rounded-lg border bg-background/50 p-3">
+                  <div>
+                    <p className="font-semibold leading-snug">{fullName(renewalClient)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {renewalClient.phone || "Sin teléfono"}
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <p className="text-sm font-medium">
+                      {renewalClient.activeMembership?.planName ?? "Sin membresía activa"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Vence {formatDate(renewalClient.activeMembership?.endDate)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="renewalPlan">Plan</Label>
+                <select
+                  id="renewalPlan"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                  value={renewalForm.planId}
+                  onChange={(event) => handleRenewalPlanChange(event.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar plan</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name}
+                      {plan.id === renewalClient?.activeMembership?.planId ? " (actual)" : ""} ·{" "}
+                      {plan.durationDays} días · {formatCurrency(plan.price)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="renewalStartDate">Inicio</Label>
+                  <Input
+                    id="renewalStartDate"
+                    type="date"
+                    value={renewalForm.startDate}
+                    onChange={(event) => handleRenewalStartDateChange(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="renewalEndDate">Fin</Label>
+                  <Input
+                    id="renewalEndDate"
+                    type="date"
+                    value={renewalForm.endDate}
+                    onChange={(event) =>
+                      setRenewalForm({
+                        ...renewalForm,
+                        endDate: event.target.value,
+                        datesEdited: true,
+                      })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-lg border bg-background/50 px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-primary"
+                  checked={renewalForm.confirmed}
+                  onChange={(event) =>
+                    setRenewalForm({ ...renewalForm, confirmed: event.target.checked })
+                  }
+                />
+                <span>Cliente confirmó la renovación</span>
+              </label>
+
+              <div className="space-y-2">
+                <Label htmlFor="renewalPaymentMethod">Método de pago</Label>
+                <select
+                  id="renewalPaymentMethod"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                  value={renewalForm.paymentMethod}
+                  onChange={(event) =>
+                    setRenewalForm({
+                      ...renewalForm,
+                      paymentMethod: event.target.value,
+                      yapeAmount: event.target.value === "MIXTO" ? renewalForm.yapeAmount : "",
+                      cashAmount: event.target.value === "MIXTO" ? renewalForm.cashAmount : "",
+                    })
+                  }
+                  required
+                >
+                  {paymentMethodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {renewalForm.paymentMethod === "MIXTO" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="renewalYapeAmount">Monto en Yape</Label>
+                    <Input
+                      id="renewalYapeAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={renewalForm.yapeAmount}
+                      onChange={(event) =>
+                        setRenewalForm({ ...renewalForm, yapeAmount: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="renewalCashAmount">Monto en efectivo</Label>
+                    <Input
+                      id="renewalCashAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={renewalForm.cashAmount}
+                      onChange={(event) =>
+                        setRenewalForm({ ...renewalForm, cashAmount: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-lg border bg-background/50 px-3 py-2">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <strong>{formatCurrency(renewalAmount)}</strong>
+              </div>
+
+              {renewalError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {renewalError}
+                </p>
+              )}
+
+              <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={resetRenewalForm}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isRenewing || !renewalForm.confirmed || !selectedRenewalPlan}
+                >
+                  {isRenewing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
+                  {isRenewing ? "Renovando..." : "Renovar membresía"}
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+
         {isClientsModule && (
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -795,7 +1289,12 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     <Input
                       id="firstName"
                       value={clientForm.firstName}
-                      onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                      onChange={(e) =>
+                        setClientForm({
+                          ...clientForm,
+                          firstName: sanitizeTextInput(e.target.value),
+                        })
+                      }
                       required
                     />
                   </div>
@@ -804,7 +1303,12 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     <Input
                       id="lastName"
                       value={clientForm.lastName}
-                      onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                      onChange={(e) =>
+                        setClientForm({
+                          ...clientForm,
+                          lastName: sanitizeTextInput(e.target.value),
+                        })
+                      }
                       required
                     />
                   </div>
@@ -813,8 +1317,17 @@ function Clients({ module = "clients", searchQuery = "" }) {
                   <Label htmlFor="phone">Teléfono</Label>
                   <Input
                     id="phone"
+                    inputMode="numeric"
+                    maxLength={9}
+                    pattern="[0-9]{9}"
+                    title="Ingresa exactamente 9 dígitos"
                     value={clientForm.phone}
-                    onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                    onChange={(e) =>
+                      setClientForm({
+                        ...clientForm,
+                        phone: sanitizePhoneInput(e.target.value),
+                      })
+                    }
                   />
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/50 px-3 py-2">
@@ -900,6 +1413,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                           {renderWhatsappReminderButton(client)}
                           {canManageClients && (
                             <>
+                              {renderRenewalButton(client)}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -982,6 +1496,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         {renderWhatsappReminderButton(client)}
                         {canManageClients && (
                           <>
+                            {renderRenewalButton(client)}
                             {renderClientStatusSwitch(client)}
                             <Button
                               size="sm"
@@ -1132,11 +1647,20 @@ function Clients({ module = "clients", searchQuery = "" }) {
                   <Label htmlFor="planPrice">Precio (S/)</Label>
                   <Input
                     id="planPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]+(\\.[0-9]{1,2})?"
+                    title="Ingresa un precio positivo, por ejemplo 11.99"
                     value={planForm.price}
-                    onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
+                    onBeforeInput={preventInvalidDecimalBeforeInput}
+                    onKeyDown={preventInvalidDecimalKey}
+                    onPaste={preventInvalidDecimalPaste}
+                    onChange={(e) =>
+                      setPlanForm({
+                        ...planForm,
+                        price: sanitizePositiveDecimalInput(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -1146,8 +1670,17 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     id="planDuration"
                     type="number"
                     min="1"
+                    step="1"
                     value={planForm.durationDays}
-                    onChange={(e) => setPlanForm({ ...planForm, durationDays: e.target.value })}
+                    onBeforeInput={preventInvalidIntegerBeforeInput}
+                    onKeyDown={preventInvalidIntegerKey}
+                    onPaste={preventInvalidIntegerPaste}
+                    onChange={(e) =>
+                      setPlanForm({
+                        ...planForm,
+                        durationDays: sanitizePositiveIntegerInput(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>

@@ -1,5 +1,6 @@
 export const MEMBERSHIP_STATUS_LABELS = {
   ACTIVE: "Activa",
+  PENDING: "Programada",
   EXPIRED: "Vencida",
   CANCELLED: "Cancelada",
 };

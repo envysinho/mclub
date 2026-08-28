@@ -21,6 +21,13 @@ public class MembershipStatusService {
 
     @Transactional
     public void refreshExpiredMemberships() {
+        List<ClientMembership> pending = clientMembershipRepository.findByStatusAndStartDateLessThanEqual(
+                MembershipStatus.PENDING, LocalDate.now());
+        for (ClientMembership membership : pending) {
+            membership.setStatus(MembershipStatus.ACTIVE);
+            clientMembershipRepository.save(membership);
+        }
+
         List<ClientMembership> expired = clientMembershipRepository.findByStatusAndEndDateBefore(
                 MembershipStatus.ACTIVE, LocalDate.now());
         for (ClientMembership membership : expired) {

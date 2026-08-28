@@ -1,6 +1,7 @@
 package com.example.gym.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,7 +16,9 @@ import com.example.gym.dto.CreateMembershipPlanRequest;
 import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
 import com.example.gym.dto.MembershipValidationResponse;
+import com.example.gym.dto.RenewMembershipRequest;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
+import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
 import com.example.gym.entity.MembershipPlan;
 import com.example.gym.entity.Movement;
@@ -23,6 +26,7 @@ import com.example.gym.entity.User;
 import com.example.gym.model.MembershipStatus;
 import com.example.gym.model.MovementType;
 import com.example.gym.model.PaymentMethod;
+import com.example.gym.repository.ClientRepository;
 import com.example.gym.repository.ClientMembershipRepository;
 import com.example.gym.repository.MembershipPlanRepository;
 import com.example.gym.repository.MovementRepository;
@@ -30,22 +34,28 @@ import com.example.gym.repository.MovementRepository;
 @Service
 public class MembershipService {
 
+    private final ClientRepository clientRepository;
     private final MembershipPlanRepository membershipPlanRepository;
     private final ClientMembershipRepository clientMembershipRepository;
     private final MovementRepository movementRepository;
     private final MembershipValidationService membershipValidationService;
+    private final MembershipStatusService membershipStatusService;
     private final ClientAttendanceService clientAttendanceService;
 
     public MembershipService(
+            ClientRepository clientRepository,
             MembershipPlanRepository membershipPlanRepository,
             ClientMembershipRepository clientMembershipRepository,
             MovementRepository movementRepository,
             MembershipValidationService membershipValidationService,
+            MembershipStatusService membershipStatusService,
             ClientAttendanceService clientAttendanceService) {
+        this.clientRepository = clientRepository;
         this.membershipPlanRepository = membershipPlanRepository;
         this.clientMembershipRepository = clientMembershipRepository;
         this.movementRepository = movementRepository;
         this.membershipValidationService = membershipValidationService;
+        this.membershipStatusService = membershipStatusService;
         this.clientAttendanceService = clientAttendanceService;
     }
 
@@ -80,28 +90,92 @@ public class MembershipService {
     public MembershipAssignmentResponse assignMembership(AssignMembershipRequest request, User createdBy) {
         MembershipValidationService.MembershipAssignmentContext context = membershipValidationService.validate(request);
 
-        ClientMembership membership = new ClientMembership();
-        membership.setClient(context.client());
-        membership.setPlan(context.plan());
-        membership.setStartDate(context.startDate());
-        membership.setEndDate(context.endDate());
-        membership.setStatus(MembershipStatus.ACTIVE);
-        membership.setAccessToken(generateAccessToken());
-        ClientMembership saved = clientMembershipRepository.save(membership);
-
-        Movement movement = new Movement();
-        movement.setType(context.hasPreviousMembership() ? MovementType.MEMBERSHIP_RENEWAL : MovementType.MEMBERSHIP_SALE);
-        movement.setDescription("Membresía " + context.plan().getName());
-        movement.setAmount(context.plan().getPrice());
-        movement.setQuantity(1);
-        movement.setClient(context.client());
-        movement.setCreatedBy(createdBy);
-        movement.setReferenceId(saved.getId());
-        movement.setPaymentMethod(request.paymentMethod());
-        setMixedPaymentAmounts(movement, context.plan().getPrice(), request.paymentMethod(), request.yapeAmount(), request.cashAmount());
-        movementRepository.save(movement);
+        ClientMembership saved = createMembership(
+                context.client(),
+                context.plan(),
+                context.startDate(),
+                context.endDate(),
+                MembershipStatus.ACTIVE);
+        saveMembershipMovement(
+                saved,
+                context.hasPreviousMembership() ? MovementType.MEMBERSHIP_RENEWAL : MovementType.MEMBERSHIP_SALE,
+                request.paymentMethod(),
+                request.yapeAmount(),
+                request.cashAmount(),
+                createdBy);
 
         return MembershipAssignmentResponse.from(saved);
+    }
+
+    @Transactional
+    public MembershipAssignmentResponse renewMembership(RenewMembershipRequest request, User createdBy) {
+        membershipStatusService.refreshExpiredMemberships();
+
+        Client client = clientRepository.findById(request.clientId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado"));
+
+        if (!client.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cliente esta inactivo");
+        }
+
+        MembershipPlan plan = getPlanOrThrow(request.planId());
+        LocalDate startDate = request.startDate() != null
+                ? request.startDate()
+                : suggestedRenewalStartDate(client.getId());
+        LocalDate endDate = request.endDate() != null ? request.endDate() : startDate.plusDays(plan.getDurationDays());
+
+        validateDateRange(startDate, endDate);
+        validateRenewalDoesNotOverlap(client.getId(), startDate);
+
+        MembershipStatus status = startDate.isAfter(LocalDate.now())
+                ? MembershipStatus.PENDING
+                : MembershipStatus.ACTIVE;
+        ClientMembership saved = createMembership(client, plan, startDate, endDate, status);
+        saveMembershipMovement(
+                saved,
+                MovementType.MEMBERSHIP_RENEWAL,
+                request.paymentMethod(),
+                request.yapeAmount(),
+                request.cashAmount(),
+                createdBy);
+
+        return MembershipAssignmentResponse.from(saved);
+    }
+
+    private ClientMembership createMembership(
+            Client client,
+            MembershipPlan plan,
+            LocalDate startDate,
+            LocalDate endDate,
+            MembershipStatus status) {
+        ClientMembership membership = new ClientMembership();
+        membership.setClient(client);
+        membership.setPlan(plan);
+        membership.setStartDate(startDate);
+        membership.setEndDate(endDate);
+        membership.setStatus(status);
+        membership.setAccessToken(generateAccessToken());
+        return clientMembershipRepository.save(membership);
+    }
+
+    private void saveMembershipMovement(
+            ClientMembership membership,
+            MovementType type,
+            PaymentMethod paymentMethod,
+            BigDecimal yapeAmount,
+            BigDecimal cashAmount,
+            User createdBy) {
+        Movement movement = new Movement();
+        movement.setType(type);
+        movement.setDescription("Membresía " + membership.getPlan().getName());
+        movement.setAmount(membership.getPlan().getPrice());
+        movement.setQuantity(1);
+        movement.setClient(membership.getClient());
+        movement.setCreatedBy(createdBy);
+        movement.setReferenceId(membership.getId());
+        movement.setPaymentMethod(paymentMethod);
+        setMixedPaymentAmounts(movement, membership.getPlan().getPrice(), paymentMethod, yapeAmount, cashAmount);
+        movementRepository.save(movement);
     }
 
     @Transactional
@@ -117,6 +191,34 @@ public class MembershipService {
 
     private String generateAccessToken() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private LocalDate suggestedRenewalStartDate(Long clientId) {
+        return clientMembershipRepository.findFirstByClientIdAndStatusInOrderByEndDateDesc(
+                        clientId,
+                        List.of(MembershipStatus.ACTIVE, MembershipStatus.PENDING))
+                .map(existing -> existing.getEndDate().plusDays(1))
+                .orElse(LocalDate.now());
+    }
+
+    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de fin no puede ser anterior al inicio");
+        }
+    }
+
+    private void validateRenewalDoesNotOverlap(Long clientId, LocalDate startDate) {
+        clientMembershipRepository.findFirstByClientIdAndStatusInOrderByEndDateDesc(
+                        clientId,
+                        List.of(MembershipStatus.ACTIVE, MembershipStatus.PENDING))
+                .ifPresent(existing -> {
+                    if (!startDate.isAfter(existing.getEndDate())) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "La renovacion debe iniciar despues de la vigencia ya registrada hasta "
+                                        + existing.getEndDate());
+                    }
+                });
     }
 
     private void setMixedPaymentAmounts(

@@ -27,6 +27,7 @@ import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
 import com.example.gym.dto.MembershipQrLinkResponse;
 import com.example.gym.dto.MembershipValidationResponse;
+import com.example.gym.dto.RenewMembershipRequest;
 import com.example.gym.dto.ValidateMembershipTokenRequest;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
 import com.example.gym.security.UserPrincipal;
@@ -78,6 +79,14 @@ public class MembershipController {
     @ResponseStatus(HttpStatus.CREATED)
     public MembershipAssignmentResponse assignMembership(@Valid @RequestBody AssignMembershipRequest request, Authentication authentication) {
         return membershipService.assignMembership(request, authenticatedUser(authentication));
+    }
+
+    @PostMapping("/memberships/renew")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MembershipAssignmentResponse renewMembership(
+            @Valid @RequestBody RenewMembershipRequest request,
+            Authentication authentication) {
+        return membershipService.renewMembership(request, authenticatedUser(authentication));
     }
 
     @PostMapping("/memberships/validate")

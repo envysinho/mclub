@@ -2,6 +2,7 @@ package com.example.gym.service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -58,8 +59,17 @@ public class MembershipValidationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de fin no puede ser anterior al inicio");
         }
 
-        clientMembershipRepository.findFirstByClientIdAndStatusOrderByEndDateDesc(client.getId(), MembershipStatus.ACTIVE)
+        clientMembershipRepository.findFirstByClientIdAndStatusInOrderByEndDateDesc(
+                        client.getId(),
+                        List.of(MembershipStatus.ACTIVE, MembershipStatus.PENDING))
                 .ifPresent(existing -> {
+                    if (existing.getStatus() == MembershipStatus.PENDING) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "El cliente ya tiene una renovacion programada desde " + existing.getStartDate()
+                                        + " hasta " + existing.getEndDate());
+                    }
+
                     throw new ResponseStatusException(
                             HttpStatus.BAD_REQUEST,
                             "El cliente ya tiene una membresía activa hasta " + existing.getEndDate()
@@ -76,6 +86,10 @@ public class MembershipValidationService {
 
         ClientMembership membership = clientMembershipRepository.findByAccessToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Token no encontrado"));
+
+        if (membership.getStartDate().isAfter(LocalDate.now())) {
+            return buildInvalidResponse(membership, "La membresía aún no inicia");
+        }
 
         if (membership.getStatus() != MembershipStatus.ACTIVE) {
             return buildInvalidResponse(membership, "La membresía no está activa");

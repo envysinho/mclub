@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 const EMPTY_PRODUCT = {
   name: "",
   price: "",
-  stock: "0",
+  stock: "1",
   purchaseAmount: "",
   paymentMethod: "EFECTIVO",
   yapeAmount: "",
@@ -48,6 +48,63 @@ const EMPTY_PRODUCT = {
 const PRODUCT_LIST_COLUMNS = "minmax(16rem, 1fr) 8.5rem 6.5rem minmax(18rem, 1fr) auto";
 const PAYMENT_METHOD_OPTIONS = ["EFECTIVO", "YAPE", "MIXTO"];
 const PRODUCTS_PAGE_SIZE = 13;
+const POSITIVE_DECIMAL_PATTERN = /^(?=.*[1-9])\d+(?:\.\d{1,2})?$/;
+const POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/;
+
+function sanitizePositiveDecimalInput(value) {
+  const normalizedValue = value.replace(",", ".");
+  const [integerPart, ...decimalParts] = normalizedValue.replace(/[^\d.]/g, "").split(".");
+  const integerValue =
+    integerPart === "" && decimalParts.length
+      ? "0"
+      : integerPart.replace(/^0+(?=\d)/, "");
+  const decimalPart = decimalParts.join("").slice(0, 2);
+
+  return decimalParts.length ? `${integerValue}.${decimalPart}` : integerValue;
+}
+
+function sanitizePositiveIntegerInput(value) {
+  return value.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function preventInvalidDecimalKey(event) {
+  if (event.key.length === 1 && !/[\d.]/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidDecimalBeforeInput(event) {
+  const data = event.data?.replace(",", ".");
+  if (data && /[^\d.]/.test(data)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidDecimalPaste(event) {
+  const value = sanitizePositiveDecimalInput(event.clipboardData.getData("text"));
+  if (!value) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerKey(event) {
+  if (event.key.length === 1 && !/\d/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerBeforeInput(event) {
+  if (event.data && /\D/.test(event.data)) {
+    event.preventDefault();
+  }
+}
+
+function preventInvalidIntegerPaste(event) {
+  const value = event.clipboardData.getData("text");
+  if (!POSITIVE_INTEGER_PATTERN.test(value)) {
+    event.preventDefault();
+  }
+}
 
 function Products({ searchQuery = "" }) {
   const { logout, user } = useAuth();
@@ -124,31 +181,40 @@ function Products({ searchQuery = "" }) {
     setFormError(null);
     setIsSubmitting(true);
 
-    const stockEntryQuantity = Math.max(
-      0,
-      Number(productForm.stock || 0) - (editingProduct ? Number(editingProduct.stock || 0) : 0)
-    );
-    const hasPurchaseExpense = stockEntryQuantity > 0 && productForm.purchaseAmount !== "";
-
-    const payload = {
-      name: productForm.name.trim(),
-      price: Number(productForm.price),
-      stock: Number(productForm.stock),
-      purchaseAmount: hasPurchaseExpense ? Number(productForm.purchaseAmount) : null,
-      paymentMethod: hasPurchaseExpense ? productForm.paymentMethod : null,
-      yapeAmount:
-        hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
-          ? Number(productForm.yapeAmount || 0)
-          : null,
-      cashAmount:
-        hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
-          ? Number(productForm.cashAmount || 0)
-          : null,
-      paidFromCashRegister: hasPurchaseExpense ? productForm.paidFromCashRegister : false,
-      description: productForm.description.trim() || null,
-    };
-
     try {
+      const price = productForm.price.trim();
+      if (!POSITIVE_DECIMAL_PATTERN.test(price)) {
+        throw new Error("El precio debe ser un decimal positivo con máximo 2 decimales");
+      }
+      if (!POSITIVE_INTEGER_PATTERN.test(productForm.stock)) {
+        throw new Error("El stock debe ser un número entero positivo");
+      }
+
+      const stock = Number(productForm.stock);
+      const stockEntryQuantity = Math.max(
+        0,
+        stock - (editingProduct ? Number(editingProduct.stock || 0) : 0)
+      );
+      const hasPurchaseExpense = stockEntryQuantity > 0 && productForm.purchaseAmount !== "";
+
+      const payload = {
+        name: productForm.name.trim(),
+        price: Number(price),
+        stock,
+        purchaseAmount: hasPurchaseExpense ? Number(productForm.purchaseAmount) : null,
+        paymentMethod: hasPurchaseExpense ? productForm.paymentMethod : null,
+        yapeAmount:
+          hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
+            ? Number(productForm.yapeAmount || 0)
+            : null,
+        cashAmount:
+          hasPurchaseExpense && productForm.paymentMethod === "MIXTO"
+            ? Number(productForm.cashAmount || 0)
+            : null,
+        paidFromCashRegister: hasPurchaseExpense ? productForm.paidFromCashRegister : false,
+        description: productForm.description.trim() || null,
+      };
+
       if (editingProduct) {
         await updateProduct(editingProduct.id, payload, handleUnauthorized);
       } else {
@@ -425,12 +491,19 @@ function Products({ searchQuery = "" }) {
                   <Label htmlFor="productPrice">Precio (S/)</Label>
                   <Input
                     id="productPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]+(\\.[0-9]{1,2})?"
+                    title="Ingresa un precio positivo, por ejemplo 11.99"
                     value={productForm.price}
+                    onBeforeInput={preventInvalidDecimalBeforeInput}
+                    onKeyDown={preventInvalidDecimalKey}
+                    onPaste={preventInvalidDecimalPaste}
                     onChange={(event) =>
-                      setProductForm({ ...productForm, price: event.target.value })
+                      setProductForm({
+                        ...productForm,
+                        price: sanitizePositiveDecimalInput(event.target.value),
+                      })
                     }
                     required
                   />
@@ -440,10 +513,17 @@ function Products({ searchQuery = "" }) {
                   <Input
                     id="productStock"
                     type="number"
-                    min="0"
+                    min="1"
+                    step="1"
                     value={productForm.stock}
+                    onBeforeInput={preventInvalidIntegerBeforeInput}
+                    onKeyDown={preventInvalidIntegerKey}
+                    onPaste={preventInvalidIntegerPaste}
                     onChange={(event) =>
-                      setProductForm({ ...productForm, stock: event.target.value })
+                      setProductForm({
+                        ...productForm,
+                        stock: sanitizePositiveIntegerInput(event.target.value),
+                      })
                     }
                     required
                   />

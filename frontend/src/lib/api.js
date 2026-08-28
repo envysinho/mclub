@@ -133,6 +133,14 @@ export async function assignMembership(data, onUnauthorized) {
   );
 }
 
+export async function renewMembership(data, onUnauthorized) {
+  return apiFetch(
+    "/api/memberships/renew",
+    { method: "POST", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
 export async function createMembershipQrDownloadLink(membershipId, data, onUnauthorized) {
   return apiFetch(
     `/api/memberships/${membershipId}/qr-download-links`,
