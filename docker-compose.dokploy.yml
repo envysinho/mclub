@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-gym}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - gym_postgres_data_v18:/var/lib/postgresql/data
+      - gym_postgres_data_v18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-gym} -d $${POSTGRES_DB:-gym_db}"]
       interval: 10s
