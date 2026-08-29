@@ -4,6 +4,7 @@ services:
     container_name: gym-postgres
     restart: unless-stopped
     environment:
+      TZ: America/Lima
       POSTGRES_DB: gym_db
       POSTGRES_USER: gym
       POSTGRES_PASSWORD: gym
@@ -28,6 +29,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      TZ: America/Lima
+      JAVA_TOOL_OPTIONS: -Duser.timezone=America/Lima
       PORT: 8082
       DB_URL: jdbc:postgresql://postgres:5432/gym_db
       DB_USER: gym
