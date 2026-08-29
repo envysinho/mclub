@@ -821,7 +821,7 @@ function Inventory() {
           </div>
         ) : inventory?.products?.length ? (
           <>
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {paginatedInventoryProducts.map((product) => (
                 <InventoryProductMobileCard
                   key={product.productId}
@@ -830,7 +830,7 @@ function Inventory() {
                 />
               ))}
             </div>
-            <div className="hidden overflow-x-auto rounded-xl border md:block">
+            <div className="hidden overflow-x-auto rounded-xl border lg:block">
               <table className="w-full min-w-[940px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
@@ -888,12 +888,12 @@ function Inventory() {
           </div>
         ) : inventory?.movements?.length ? (
           <>
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {paginatedStockMovements.map((movement) => (
                 <StockMovementMobileCard key={movement.id} movement={movement} />
               ))}
             </div>
-            <div className="hidden overflow-x-auto rounded-xl border md:block">
+            <div className="hidden overflow-x-auto rounded-xl border lg:block">
               <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">

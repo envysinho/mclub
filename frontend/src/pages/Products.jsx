@@ -732,10 +732,10 @@ function Products({ searchQuery = "" }) {
             </>
           ) : filteredProducts.length ? (
             <>
-              <div className="overflow-hidden rounded-xl border md:hidden">
+              <div className="overflow-hidden rounded-xl border lg:hidden">
                 {paginatedProducts.map((product) => renderProductListMobileCard(product))}
               </div>
-              <div className="hidden overflow-x-auto rounded-xl border md:block">
+              <div className="hidden overflow-x-auto rounded-xl border lg:block">
                 {paginatedProducts.map((product) => (
                   <div
                     key={product.id}
