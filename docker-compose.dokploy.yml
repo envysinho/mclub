@@ -1,13 +1,13 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gym_db}
       POSTGRES_USER: ${POSTGRES_USER:-gym}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - gym_postgres_data:/var/lib/postgresql/data
+      - gym_postgres_data_v18:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-gym} -d $${POSTGRES_DB:-gym_db}"]
       interval: 10s
@@ -43,4 +43,4 @@ services:
       - "80"
 
 volumes:
-  gym_postgres_data:
+  gym_postgres_data_v18:
