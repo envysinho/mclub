@@ -9,7 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.gym.dto.MovementResponse;
+import com.example.gym.entity.Client;
+import com.example.gym.entity.Movement;
+import com.example.gym.model.MovementType;
 import com.example.gym.model.Role;
+import com.example.gym.repository.ClientAttendanceRepository;
+import com.example.gym.repository.ClientMembershipRepository;
+import com.example.gym.repository.ClientRepository;
 import com.example.gym.repository.MovementRepository;
 import com.example.gym.security.UserPrincipal;
 
@@ -17,9 +23,19 @@ import com.example.gym.security.UserPrincipal;
 public class MovementService {
 
     private final MovementRepository movementRepository;
+    private final ClientMembershipRepository clientMembershipRepository;
+    private final ClientAttendanceRepository clientAttendanceRepository;
+    private final ClientRepository clientRepository;
 
-    public MovementService(MovementRepository movementRepository) {
+    public MovementService(
+            MovementRepository movementRepository,
+            ClientMembershipRepository clientMembershipRepository,
+            ClientAttendanceRepository clientAttendanceRepository,
+            ClientRepository clientRepository) {
         this.movementRepository = movementRepository;
+        this.clientMembershipRepository = clientMembershipRepository;
+        this.clientAttendanceRepository = clientAttendanceRepository;
+        this.clientRepository = clientRepository;
     }
 
     @Transactional(readOnly = true)
@@ -37,10 +53,32 @@ public class MovementService {
 
     @Transactional
     public void delete(Long id) {
-        if (!movementRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Movimiento no encontrado");
+        Movement movement = movementRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movimiento no encontrado"));
+
+        Client client = movement.getClient();
+        Long clientId = client == null ? null : client.getId();
+        boolean shouldDeleteClient = movement.getType() == MovementType.MEMBERSHIP_SALE
+                && clientId != null
+                && movementRepository.countByClientIdAndIdNot(clientId, movement.getId()) == 0
+                && clientAttendanceRepository.countByClientId(clientId) == 0;
+
+        if (isMembershipMovement(movement) && movement.getReferenceId() != null) {
+            clientMembershipRepository.findById(movement.getReferenceId())
+                    .filter(membership -> clientId == null || membership.getClient().getId().equals(clientId))
+                    .ifPresent(clientMembershipRepository::delete);
         }
-        movementRepository.deleteById(id);
+
+        movementRepository.delete(movement);
+
+        if (shouldDeleteClient && clientMembershipRepository.countByClientId(clientId) == 0) {
+            clientRepository.delete(client);
+        }
+    }
+
+    private boolean isMembershipMovement(Movement movement) {
+        return movement.getType() == MovementType.MEMBERSHIP_SALE
+                || movement.getType() == MovementType.MEMBERSHIP_RENEWAL;
     }
 
     private boolean isUser(Authentication authentication) {

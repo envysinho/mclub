@@ -165,8 +165,8 @@ function StatCard({ icon: Icon, label, value, hint }) {
 function MovementMobileCard({ movement, canDeleteMovements, canViewAudit, onDelete }) {
   return (
     <div className="rounded-xl border bg-card p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">
               {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
@@ -187,8 +187,8 @@ function MovementMobileCard({ movement, canDeleteMovements, canViewAudit, onDele
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <strong className="whitespace-nowrap text-sm">
+        <div className="flex shrink-0 flex-col items-end gap-2 sm:min-w-24">
+          <strong className="whitespace-nowrap text-sm sm:text-base">
             {formatCurrency(movement.amount)}
           </strong>
           {canDeleteMovements && (
@@ -1148,7 +1148,7 @@ function Dashboard() {
           </div>
         ) : data?.recentMovements?.length ? (
           <>
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {paginatedRecentMovements.map((movement) => (
                 <MovementMobileCard
                   key={movement.id}
@@ -1162,7 +1162,7 @@ function Dashboard() {
                 />
               ))}
             </div>
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">

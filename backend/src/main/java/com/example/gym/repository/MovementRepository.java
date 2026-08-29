@@ -16,6 +16,8 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
 
     List<Movement> findTop20ByCreatedByIdOrderByCreatedAtDesc(Long userId);
 
+    long countByClientIdAndIdNot(Long clientId, Long id);
+
     @Query("SELECT m FROM Movement m WHERE m.createdAt >= :start AND m.createdAt < :end ORDER BY m.createdAt DESC")
     List<Movement> findByCreatedAtBetweenOrderByCreatedAtDesc(@Param("start") Instant start, @Param("end") Instant end);
 

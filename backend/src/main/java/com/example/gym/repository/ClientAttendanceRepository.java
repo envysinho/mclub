@@ -13,4 +13,6 @@ public interface ClientAttendanceRepository extends JpaRepository<ClientAttendan
     List<ClientAttendance> findByClientIdOrderByAttendanceDateDescCheckedInAtDesc(Long clientId);
 
     Optional<ClientAttendance> findByClientIdAndAttendanceDate(Long clientId, LocalDate attendanceDate);
+
+    long countByClientId(Long clientId);
 }
