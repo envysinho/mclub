@@ -2,6 +2,7 @@ package com.example.gym.service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -84,21 +85,41 @@ public class MembershipValidationService {
     public MembershipValidationResponse validateToken(String token) {
         membershipStatusService.refreshExpiredMemberships();
 
-        ClientMembership membership = clientMembershipRepository.findByAccessToken(token)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Token no encontrado"));
-
-        if (membership.getStartDate().isAfter(LocalDate.now())) {
-            return buildInvalidResponse(membership, "La membresía aún no inicia");
+        String accessToken = token.trim();
+        List<ClientMembership> memberships = clientMembershipRepository.findByAccessTokenOrderByEndDateDesc(accessToken);
+        if (memberships.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Token no encontrado");
         }
 
-        if (membership.getStatus() != MembershipStatus.ACTIVE) {
-            return buildInvalidResponse(membership, "La membresía no está activa");
-        }
+        LocalDate today = LocalDate.now();
+        return memberships.stream()
+                .filter(membership -> isValidToday(membership, today))
+                .findFirst()
+                .map(this::buildValidResponse)
+                .orElseGet(() -> buildInvalidTokenResponse(memberships, today));
+    }
 
-        if (membership.getEndDate().isBefore(LocalDate.now())) {
-            return buildInvalidResponse(membership, "La membresía está vencida");
-        }
+    private boolean isValidToday(ClientMembership membership, LocalDate today) {
+        return membership.getStatus() == MembershipStatus.ACTIVE
+                && !membership.getStartDate().isAfter(today)
+                && !membership.getEndDate().isBefore(today);
+    }
 
+    private MembershipValidationResponse buildInvalidTokenResponse(List<ClientMembership> memberships, LocalDate today) {
+        return memberships.stream()
+                .filter(membership -> membership.getStartDate().isAfter(today))
+                .min(Comparator.comparing(ClientMembership::getStartDate))
+                .map(membership -> buildInvalidResponse(membership, "La membresía aún no inicia"))
+                .orElseGet(() -> {
+                    ClientMembership membership = memberships.get(0);
+                    if (membership.getEndDate().isBefore(today)) {
+                        return buildInvalidResponse(membership, "La membresía está vencida");
+                    }
+                    return buildInvalidResponse(membership, "La membresía no está activa");
+                });
+    }
+
+    private MembershipValidationResponse buildValidResponse(ClientMembership membership) {
         return new MembershipValidationResponse(
                 true,
                 membership.getId(),

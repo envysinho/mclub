@@ -95,7 +95,8 @@ public class MembershipService {
                 context.plan(),
                 context.startDate(),
                 context.endDate(),
-                MembershipStatus.ACTIVE);
+                MembershipStatus.ACTIVE,
+                accessTokenForClient(context.client().getId()));
         saveMembershipMovement(
                 saved,
                 context.hasPreviousMembership() ? MovementType.MEMBERSHIP_RENEWAL : MovementType.MEMBERSHIP_SALE,
@@ -130,7 +131,7 @@ public class MembershipService {
         MembershipStatus status = startDate.isAfter(LocalDate.now())
                 ? MembershipStatus.PENDING
                 : MembershipStatus.ACTIVE;
-        ClientMembership saved = createMembership(client, plan, startDate, endDate, status);
+        ClientMembership saved = createMembership(client, plan, startDate, endDate, status, accessTokenForClient(client.getId()));
         saveMembershipMovement(
                 saved,
                 MovementType.MEMBERSHIP_RENEWAL,
@@ -147,14 +148,15 @@ public class MembershipService {
             MembershipPlan plan,
             LocalDate startDate,
             LocalDate endDate,
-            MembershipStatus status) {
+            MembershipStatus status,
+            String accessToken) {
         ClientMembership membership = new ClientMembership();
         membership.setClient(client);
         membership.setPlan(plan);
         membership.setStartDate(startDate);
         membership.setEndDate(endDate);
         membership.setStatus(status);
-        membership.setAccessToken(generateAccessToken());
+        membership.setAccessToken(accessToken);
         return clientMembershipRepository.save(membership);
     }
 
@@ -191,6 +193,12 @@ public class MembershipService {
 
     private String generateAccessToken() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String accessTokenForClient(Long clientId) {
+        return clientMembershipRepository.findFirstByClientIdAndAccessTokenIsNotNullOrderByEndDateDesc(clientId)
+                .map(ClientMembership::getAccessToken)
+                .orElseGet(this::generateAccessToken);
     }
 
     private LocalDate suggestedRenewalStartDate(Long clientId) {
