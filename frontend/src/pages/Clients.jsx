@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  Copy,
+  KeyRound,
   LayoutGrid,
   List,
   Loader2,
@@ -748,6 +750,20 @@ function Clients({ module = "clients", searchQuery = "" }) {
     }
   };
 
+  const copyMembershipToken = async (client) => {
+    const accessToken = client?.activeMembership?.accessToken;
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(accessToken);
+      setError(null);
+    } catch {
+      setError("No se pudo copiar el token de la membresía");
+    }
+  };
+
   const handleClientStatusChange = async (client) => {
     const nextActive = !(client.active !== false);
     setUpdatingClientStatusId(client.id);
@@ -924,6 +940,24 @@ function Clients({ module = "clients", searchQuery = "" }) {
     );
   };
 
+  const renderMembershipTokenButton = (client) => {
+    const accessToken = client.activeMembership?.accessToken;
+
+    return (
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="outline"
+        aria-label={`Copiar token de membresía de ${fullName(client)}`}
+        title={accessToken ? "Copiar token de membresía" : "Membresía sin token"}
+        disabled={!accessToken}
+        onClick={() => copyMembershipToken(client)}
+      >
+        <KeyRound className="size-4" />
+      </Button>
+    );
+  };
+
   const renderAttendanceButtons = (client) => {
     const isRecording = recordingAttendanceId === client.id;
 
@@ -959,6 +993,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
   const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
   const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
+  const canViewMembershipTokens = user?.role === "SUDO";
 
   return (
     <div className="flex flex-col gap-4">
@@ -1471,6 +1506,33 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         />
                       </div>
                     </div>
+                    {canViewMembershipTokens && (
+                      <div className="space-y-2">
+                        <Label htmlFor="clientMembershipToken">Token de acceso</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="clientMembershipToken"
+                            value={
+                              editingClient.activeMembership?.accessToken ||
+                              "Token no disponible"
+                            }
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => copyMembershipToken(editingClient)}
+                            disabled={!editingClient.activeMembership?.accessToken}
+                            aria-label="Copiar token de membresía"
+                            title="Copiar token de membresía"
+                          >
+                            <Copy className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {formError && <p className="text-sm text-destructive">{formError}</p>}
@@ -1521,6 +1583,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         <div className="flex flex-wrap justify-end gap-2">
                           {renderAttendanceButtons(client)}
                           {renderWhatsappReminderButton(client)}
+                          {canViewMembershipTokens && renderMembershipTokenButton(client)}
                           {canManageClients && (
                             <>
                               {renderRenewalButton(client)}
@@ -1604,6 +1667,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
                       <div className="flex flex-wrap gap-2 md:items-center md:justify-end">
                         {renderAttendanceButtons(client)}
                         {renderWhatsappReminderButton(client)}
+                        {canViewMembershipTokens && renderMembershipTokenButton(client)}
                         {canManageClients && (
                           <>
                             {renderRenewalButton(client)}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, LogIn, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Copy, KeyRound, LogIn, Pencil, Trash2, UserPlus } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,10 @@ function displayUserName(user) {
   return user?.name?.trim() || user?.username || "Usuario";
 }
 
+function isSudoRole(role) {
+  return String(role ?? "").toUpperCase() === "SUDO";
+}
+
 function Users() {
   const { beginImpersonation, logout, user: currentUser, updateCurrentUser } = useAuth();
   const [users, setUsers] = useState([]);
@@ -50,7 +54,13 @@ function Users() {
   const [deleteError, setDeleteError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [impersonatingUserId, setImpersonatingUserId] = useState(null);
-  const canManageAllUsers = currentUser?.role === "SUDO";
+  const [tokenViewerUser, setTokenViewerUser] = useState(null);
+  const [tokenViewerToken, setTokenViewerToken] = useState("");
+  const [isLoadingTokenViewer, setIsLoadingTokenViewer] = useState(false);
+  const [tokenViewerError, setTokenViewerError] = useState(null);
+  const tokenViewerRequestId = useRef(0);
+  const canManageAllUsers = isSudoRole(currentUser?.role);
+  const canViewUserTokens = isSudoRole(currentUser?.role);
   const canCreateUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
   const canDeleteUsers = currentUser?.role === "SUDO" || currentUser?.role === "ADMIN";
   const canEditUser = (user) => canManageAllUsers || currentUser?.id === user.id;
@@ -146,6 +156,51 @@ function Users() {
       await navigator.clipboard.writeText(userToken);
     } catch {
       setUserTokenError("No se pudo copiar el token");
+    }
+  };
+
+  const closeTokenViewer = () => {
+    tokenViewerRequestId.current += 1;
+    setTokenViewerUser(null);
+    setTokenViewerToken("");
+    setIsLoadingTokenViewer(false);
+    setTokenViewerError(null);
+  };
+
+  const openTokenViewer = (user) => {
+    if (!canViewUserTokens) {
+      return;
+    }
+
+    const requestId = tokenViewerRequestId.current + 1;
+    tokenViewerRequestId.current = requestId;
+    setTokenViewerUser(user);
+    setTokenViewerToken("");
+    setTokenViewerError(null);
+    setIsLoadingTokenViewer(true);
+
+    getUserToken(user.id, handleUnauthorized)
+      .then((response) => {
+        if (tokenViewerRequestId.current !== requestId) return;
+        setTokenViewerToken(response?.token ?? "");
+      })
+      .catch((err) => {
+        if (tokenViewerRequestId.current !== requestId) return;
+        setTokenViewerError(err instanceof Error ? err.message : "Error al cargar token");
+      })
+      .finally(() => {
+        if (tokenViewerRequestId.current !== requestId) return;
+        setIsLoadingTokenViewer(false);
+      });
+  };
+
+  const copyTokenViewerToken = async () => {
+    if (!tokenViewerToken) return;
+
+    try {
+      await navigator.clipboard.writeText(tokenViewerToken);
+    } catch {
+      setTokenViewerError("No se pudo copiar el token");
     }
   };
 
@@ -452,6 +507,55 @@ function Users() {
             </SheetContent>
           </Sheet>
 
+          <Sheet
+            open={Boolean(tokenViewerUser)}
+            onOpenChange={(open) => {
+              if (!open) {
+                closeTokenViewer();
+              }
+            }}
+          >
+            <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+              <SheetHeader className="border-b pr-12">
+                <SheetTitle>Token de {displayUserName(tokenViewerUser)}</SheetTitle>
+                <SheetDescription>
+                  Token de acceso disponible solo para usuarios con rol sudo.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="grid gap-4 px-4 pb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tokenViewerToken">Token</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="tokenViewerToken"
+                      value={
+                        isLoadingTokenViewer
+                          ? "Cargando token..."
+                          : tokenViewerToken || "Token no disponible"
+                      }
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={copyTokenViewerToken}
+                      disabled={!tokenViewerToken || isLoadingTokenViewer}
+                      aria-label="Copiar token"
+                      title="Copiar token"
+                    >
+                      <Copy className="size-4" />
+                    </Button>
+                  </div>
+                  {tokenViewerError && (
+                    <p className="text-sm text-destructive">{tokenViewerError}</p>
+                  )}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, index) => (
@@ -481,6 +585,17 @@ function Users() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
+                    {canViewUserTokens && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openTokenViewer(user)}
+                      >
+                        <KeyRound className="size-4" />
+                        Token
+                      </Button>
+                    )}
                     {canImpersonateUser(user) && (
                       <Button
                         type="button"
