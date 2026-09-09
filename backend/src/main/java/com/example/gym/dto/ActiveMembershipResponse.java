@@ -6,6 +6,7 @@ import com.example.gym.model.MembershipStatus;
 
 public record ActiveMembershipResponse(
         Long id,
+        Long planId,
         String planName,
         String accessToken,
         Instant startDate,

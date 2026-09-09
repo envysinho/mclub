@@ -47,6 +47,7 @@
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/RenewMembershipRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/SaveCashRegisterRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/StockMovementResponse.java
+/home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateClientMembershipRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateClientRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateMembershipPlanRequest.java
 /home/envy/gym/backend/src/main/java/com/example/gym/dto/UpdateProductRequest.java

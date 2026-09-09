@@ -46,6 +46,7 @@ import {
   registerClientAttendance,
   renewMembership,
   updateClient,
+  updateClientMembership,
   updateMembershipPlan,
 } from "@/lib/api";
 import {
@@ -81,6 +82,13 @@ const EMPTY_RENEWAL_FORM = {
   cashAmount: "",
   confirmed: false,
   datesEdited: false,
+};
+
+const EMPTY_MEMBERSHIP_EDIT_FORM = {
+  membershipId: null,
+  planId: "",
+  startDate: "",
+  endDate: "",
 };
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -335,6 +343,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [clientForm, setClientForm] = useState(EMPTY_CLIENT);
+  const [membershipEditForm, setMembershipEditForm] = useState(EMPTY_MEMBERSHIP_EDIT_FORM);
   const [clientView, setClientView] = useState("list");
   const [clientPage, setClientPage] = useState(1);
   const [updatingClientStatusId, setUpdatingClientStatusId] = useState(null);
@@ -419,6 +428,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   }));
   const selectedRenewalPlan = plans.find((plan) => plan.id === Number(renewalForm.planId));
   const renewalAmount = selectedRenewalPlan?.price ?? 0;
+  const hasEditableMembership = Boolean(editingClient?.activeMembership);
 
   useEffect(() => {
     setClientPage((currentPage) => Math.min(currentPage, totalClientPages));
@@ -430,6 +440,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
 
   const resetClientForm = () => {
     setClientForm(EMPTY_CLIENT);
+    setMembershipEditForm(EMPTY_MEMBERSHIP_EDIT_FORM);
     setEditingClient(null);
     setShowClientForm(false);
     setFormError(null);
@@ -450,6 +461,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   };
 
   const openEditClient = (client) => {
+    const membership = client.activeMembership;
     setEditingClient(client);
     setClientForm({
       firstName: client.firstName,
@@ -458,6 +470,16 @@ function Clients({ module = "clients", searchQuery = "" }) {
       documentId: client.documentId ?? "",
       active: client.active !== false,
     });
+    setMembershipEditForm(
+      membership
+        ? {
+            membershipId: membership.id,
+            planId: membership.planId ? String(membership.planId) : "",
+            startDate: dateValueToInput(membership.startDate),
+            endDate: dateValueToInput(membership.endDate),
+          }
+        : EMPTY_MEMBERSHIP_EDIT_FORM
+    );
     setShowClientForm(true);
     setFormError(null);
   };
@@ -553,7 +575,30 @@ function Clients({ module = "clients", searchQuery = "" }) {
       };
 
       if (editingClient) {
+        if (hasEditableMembership) {
+          if (!membershipEditForm.planId) {
+            throw new Error("Selecciona el plan de membresía");
+          }
+          if (!membershipEditForm.startDate || !membershipEditForm.endDate) {
+            throw new Error("Ingresa las fechas de la membresía");
+          }
+          if (membershipEditForm.endDate < membershipEditForm.startDate) {
+            throw new Error("La fecha de fin no puede ser anterior al inicio");
+          }
+        }
+
         await updateClient(editingClient.id, payload, handleUnauthorized);
+        if (hasEditableMembership) {
+          await updateClientMembership(
+            membershipEditForm.membershipId,
+            {
+              planId: Number(membershipEditForm.planId),
+              startDate: membershipEditForm.startDate,
+              endDate: membershipEditForm.endDate,
+            },
+            handleUnauthorized
+          );
+        }
       } else {
         await createClient(payload, handleUnauthorized);
       }
@@ -1363,6 +1408,71 @@ function Clients({ module = "clients", searchQuery = "" }) {
                     />
                   </button>
                 </div>
+                {editingClient && hasEditableMembership && (
+                  <div className="grid gap-4 rounded-lg border bg-background/50 p-3">
+                    <div>
+                      <h3 className="font-semibold leading-snug">Membresía</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Corrige el plan y las fechas guardadas para este cliente.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="clientMembershipPlan">Plan</Label>
+                      <select
+                        id="clientMembershipPlan"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                        value={membershipEditForm.planId}
+                        onChange={(event) =>
+                          setMembershipEditForm({
+                            ...membershipEditForm,
+                            planId: event.target.value,
+                          })
+                        }
+                        required
+                      >
+                        <option value="">Seleccionar plan</option>
+                        {plans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name}
+                            {plan.id === editingClient.activeMembership?.planId ? " (actual)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="clientMembershipStartDate">Inicio</Label>
+                        <Input
+                          id="clientMembershipStartDate"
+                          type="date"
+                          value={membershipEditForm.startDate}
+                          onChange={(event) =>
+                            setMembershipEditForm({
+                              ...membershipEditForm,
+                              startDate: event.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="clientMembershipEndDate">Fin</Label>
+                        <Input
+                          id="clientMembershipEndDate"
+                          type="date"
+                          value={membershipEditForm.endDate}
+                          onChange={(event) =>
+                            setMembershipEditForm({
+                              ...membershipEditForm,
+                              endDate: event.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {formError && <p className="text-sm text-destructive">{formError}</p>}
                 <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button

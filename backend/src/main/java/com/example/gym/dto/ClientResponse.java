@@ -21,6 +21,7 @@ public record ClientResponse(
         ActiveMembershipResponse membershipResponse = activeMembership == null ? null
                 : new ActiveMembershipResponse(
                         activeMembership.getId(),
+                        activeMembership.getPlan().getId(),
                         activeMembership.getPlan().getName(),
                         activeMembership.getAccessToken(),
                         // start at start of day in system zone

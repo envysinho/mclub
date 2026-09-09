@@ -28,6 +28,7 @@ import com.example.gym.dto.MembershipPlanResponse;
 import com.example.gym.dto.MembershipQrLinkResponse;
 import com.example.gym.dto.MembershipValidationResponse;
 import com.example.gym.dto.RenewMembershipRequest;
+import com.example.gym.dto.UpdateClientMembershipRequest;
 import com.example.gym.dto.ValidateMembershipTokenRequest;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
 import com.example.gym.security.UserPrincipal;
@@ -87,6 +88,13 @@ public class MembershipController {
             @Valid @RequestBody RenewMembershipRequest request,
             Authentication authentication) {
         return membershipService.renewMembership(request, authenticatedUser(authentication));
+    }
+
+    @PutMapping("/memberships/{id}")
+    public MembershipAssignmentResponse updateClientMembership(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody UpdateClientMembershipRequest request) {
+        return membershipService.updateClientMembership(id, request);
     }
 
     @PostMapping("/memberships/validate")

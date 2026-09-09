@@ -86,7 +86,9 @@ public class ClientService {
 
     private ClientResponse toResponse(Client client) {
         ClientMembership activeMembership = clientMembershipRepository
-                .findFirstByClientIdAndStatusOrderByEndDateDesc(client.getId(), MembershipStatus.ACTIVE)
+                .findFirstByClientIdAndStatusInOrderByEndDateDesc(
+                        client.getId(),
+                        List.of(MembershipStatus.ACTIVE, MembershipStatus.PENDING))
                 .orElse(null);
         return ClientResponse.from(client, activeMembership);
     }

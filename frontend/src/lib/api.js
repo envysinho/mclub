@@ -141,6 +141,14 @@ export async function renewMembership(data, onUnauthorized) {
   );
 }
 
+export async function updateClientMembership(id, data, onUnauthorized) {
+  return apiFetch(
+    `/api/memberships/${id}`,
+    { method: "PUT", body: JSON.stringify(data) },
+    onUnauthorized
+  );
+}
+
 export async function createMembershipQrDownloadLink(membershipId, data, onUnauthorized) {
   return apiFetch(
     `/api/memberships/${membershipId}/qr-download-links`,

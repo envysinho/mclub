@@ -17,6 +17,7 @@ import com.example.gym.dto.MembershipAssignmentResponse;
 import com.example.gym.dto.MembershipPlanResponse;
 import com.example.gym.dto.MembershipValidationResponse;
 import com.example.gym.dto.RenewMembershipRequest;
+import com.example.gym.dto.UpdateClientMembershipRequest;
 import com.example.gym.dto.UpdateMembershipPlanRequest;
 import com.example.gym.entity.Client;
 import com.example.gym.entity.ClientMembership;
@@ -143,6 +144,31 @@ public class MembershipService {
         return MembershipAssignmentResponse.from(saved);
     }
 
+    @Transactional
+    public MembershipAssignmentResponse updateClientMembership(Long id, UpdateClientMembershipRequest request) {
+        membershipStatusService.refreshExpiredMemberships();
+
+        ClientMembership membership = clientMembershipRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membresia no encontrada"));
+
+        if (membership.getStatus() != MembershipStatus.ACTIVE
+                && membership.getStatus() != MembershipStatus.PENDING) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Solo se pueden editar membresias activas o pendientes");
+        }
+
+        MembershipPlan plan = getPlanOrThrow(request.planId());
+        validateDateRange(request.startDate(), request.endDate());
+
+        membership.setPlan(plan);
+        membership.setStartDate(request.startDate());
+        membership.setEndDate(request.endDate());
+        membership.setStatus(statusForDates(request.startDate(), request.endDate()));
+
+        return MembershipAssignmentResponse.from(clientMembershipRepository.save(membership));
+    }
+
     private ClientMembership createMembership(
             Client client,
             MembershipPlan plan,
@@ -213,6 +239,17 @@ public class MembershipService {
         if (endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de fin no puede ser anterior al inicio");
         }
+    }
+
+    private MembershipStatus statusForDates(LocalDate startDate, LocalDate endDate) {
+        LocalDate today = LocalDate.now();
+        if (startDate.isAfter(today)) {
+            return MembershipStatus.PENDING;
+        }
+        if (endDate.isBefore(today)) {
+            return MembershipStatus.EXPIRED;
+        }
+        return MembershipStatus.ACTIVE;
     }
 
     private void validateRenewalDoesNotOverlap(Long clientId, LocalDate startDate) {

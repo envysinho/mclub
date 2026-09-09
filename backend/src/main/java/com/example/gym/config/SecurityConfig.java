@@ -78,6 +78,8 @@ public class SecurityConfig {
                         .hasAnyRole("SUDO", "ADMIN", "USER", "ACCESS")
                         .requestMatchers(HttpMethod.POST, "/api/memberships")
                         .hasAnyRole("SUDO", "ADMIN", "USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/memberships/**")
+                        .hasAnyRole("SUDO", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/memberships/*/qr-download-links")
                         .hasAnyRole("SUDO", "ADMIN", "USER")
                         .requestMatchers(HttpMethod.POST, "/api/membership-plans").hasAnyRole("SUDO", "ADMIN")
