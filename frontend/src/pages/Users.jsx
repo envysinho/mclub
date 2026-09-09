@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { LogIn, Pencil, Trash2, UserPlus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Copy, LogIn, Pencil, Trash2, UserPlus } from "lucide-react";
 import DeleteConfirmationDialog from "@/components/DeleteConfirmationDialog";
 import PageCard from "@/components/PageCard";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { createUser, deleteUser, impersonateUser, listUsers, updateUser } from "@/lib/api";
+import { createUser, deleteUser, getUserToken, impersonateUser, listUsers, updateUser } from "@/lib/api";
 import { getRoleLabel } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +40,10 @@ function Users() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [userForm, setUserForm] = useState(EMPTY_USER);
+  const [userToken, setUserToken] = useState("");
+  const [isLoadingUserToken, setIsLoadingUserToken] = useState(false);
+  const [userTokenError, setUserTokenError] = useState(null);
+  const userTokenRequestId = useRef(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -74,18 +78,26 @@ function Users() {
   }, [loadUsers]);
 
   const resetForm = () => {
+    userTokenRequestId.current += 1;
     setUserForm(EMPTY_USER);
+    setUserToken("");
+    setIsLoadingUserToken(false);
+    setUserTokenError(null);
     setEditingUser(null);
     setFormError(null);
     setShowForm(false);
   };
 
   const openCreateForm = () => {
+    userTokenRequestId.current += 1;
     setUserForm({
       ...EMPTY_USER,
       role: "USER",
       enabled: true,
     });
+    setUserToken("");
+    setIsLoadingUserToken(false);
+    setUserTokenError(null);
     setEditingUser(null);
     setFormError(null);
     setShowForm(true);
@@ -99,9 +111,42 @@ function Users() {
       role: user.role,
       enabled: user.enabled,
     });
+    setUserToken("");
+    setUserTokenError(null);
     setEditingUser(user);
     setFormError(null);
     setShowForm(true);
+
+    if (!canManageAllUsers) {
+      return;
+    }
+
+    const requestId = userTokenRequestId.current + 1;
+    userTokenRequestId.current = requestId;
+    setIsLoadingUserToken(true);
+    getUserToken(user.id, handleUnauthorized)
+      .then((response) => {
+        if (userTokenRequestId.current !== requestId) return;
+        setUserToken(response?.token ?? "");
+      })
+      .catch((err) => {
+        if (userTokenRequestId.current !== requestId) return;
+        setUserTokenError(err instanceof Error ? err.message : "Error al cargar token");
+      })
+      .finally(() => {
+        if (userTokenRequestId.current !== requestId) return;
+        setIsLoadingUserToken(false);
+      });
+  };
+
+  const copyUserToken = async () => {
+    if (!userToken) return;
+
+    try {
+      await navigator.clipboard.writeText(userToken);
+    } catch {
+      setUserTokenError("No se pudo copiar el token");
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -361,6 +406,37 @@ function Users() {
                         )}
                       />
                     </button>
+                  </div>
+                )}
+                {editingUser && canManageAllUsers && (
+                  <div className="space-y-2">
+                    <Label htmlFor="userToken">Token</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="userToken"
+                        value={
+                          isLoadingUserToken
+                            ? "Cargando token..."
+                            : userToken || "Token no disponible"
+                        }
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={copyUserToken}
+                        disabled={!userToken || isLoadingUserToken}
+                        aria-label="Copiar token"
+                        title="Copiar token"
+                      >
+                        <Copy className="size-4" />
+                      </Button>
+                    </div>
+                    {userTokenError && (
+                      <p className="text-sm text-destructive">{userTokenError}</p>
+                    )}
                   </div>
                 )}
                 {formError && <p className="text-sm text-destructive">{formError}</p>}

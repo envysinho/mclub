@@ -21,6 +21,7 @@ import com.example.gym.dto.ImpersonationResponse;
 import com.example.gym.dto.UpdateUserRequest;
 import com.example.gym.dto.UpdateUserResponse;
 import com.example.gym.dto.UserResponse;
+import com.example.gym.dto.UserTokenResponse;
 import com.example.gym.entity.User;
 import com.example.gym.service.UserService;
 import com.example.gym.security.JwtService;
@@ -53,6 +54,14 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse createUser(@Valid @RequestBody CreateUserRequest request, Authentication authentication) {
         return userService.create(request, authenticatedUser(authentication));
+    }
+
+    @GetMapping("/{id}/token")
+    public UserTokenResponse getUserToken(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
+        User target = userService.getTokenTarget(id, authenticatedUser(authentication));
+        return new UserTokenResponse(jwtService.generateToken(target));
     }
 
     @PutMapping("/{id}")

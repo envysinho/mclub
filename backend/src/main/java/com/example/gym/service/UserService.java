@@ -113,6 +113,22 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public User getTokenTarget(Long id, User actor) {
+        if (actor.getRole() != Role.SUDO) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo SUDO puede ver tokens de usuario");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!user.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No puedes generar token de un usuario desactivado");
+        }
+
+        return user;
+    }
+
+    @Transactional(readOnly = true)
     public User impersonate(Long id, User actor) {
         if (actor.getRole() != Role.SUDO) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo SUDO puede entrar como otro usuario");

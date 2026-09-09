@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/token").hasRole("SUDO")
                         .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**")
                         .hasAnyRole("SUDO", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/users").hasAnyRole("SUDO", "ADMIN")

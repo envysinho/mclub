@@ -265,6 +265,10 @@ export async function createUser(data, onUnauthorized) {
   );
 }
 
+export async function getUserToken(id, onUnauthorized) {
+  return apiFetch(`/api/users/${id}/token`, {}, onUnauthorized);
+}
+
 export async function updateUser(id, data, onUnauthorized) {
   return apiFetch(
     `/api/users/${id}`,
