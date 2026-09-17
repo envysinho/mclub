@@ -588,12 +588,8 @@ function Reports() {
 
   const renderMonthlyMovementsPagination = () =>
     totalMonthlyMovementPages > 1 && (
-      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Mostrando {visibleMonthlyMovementStart}-{visibleMonthlyMovementEnd} de{" "}
-          {monthlyMovements.length}
-        </p>
-        <Pagination className="sm:mx-0 sm:w-auto">
+      <div className="flex flex-col items-start gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
+        <Pagination className="mx-0 w-auto">
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
@@ -628,6 +624,10 @@ function Reports() {
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+        <p className="text-sm text-muted-foreground">
+          Mostrando {visibleMonthlyMovementStart}-{visibleMonthlyMovementEnd} de{" "}
+          {monthlyMovements.length}
+        </p>
       </div>
     );
 

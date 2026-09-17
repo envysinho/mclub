@@ -1226,12 +1226,8 @@ function Dashboard() {
               </table>
             </div>
             {totalMovementPages > 1 && (
-              <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Mostrando {visibleMovementStart}-{visibleMovementEnd} de{" "}
-                  {recentMovements.length}
-                </p>
-                <Pagination className="sm:mx-0 sm:w-auto">
+              <div className="mt-4 flex flex-col items-start gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
+                <Pagination className="mx-0 w-auto">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
@@ -1260,6 +1256,10 @@ function Dashboard() {
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {visibleMovementStart}-{visibleMovementEnd} de{" "}
+                  {recentMovements.length}
+                </p>
               </div>
             )}
           </>
