@@ -2,6 +2,7 @@ package com.example.gym.service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 
@@ -22,6 +23,8 @@ import com.example.gym.repository.MembershipPlanRepository;
 
 @Service
 public class MembershipValidationService {
+
+    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ClientRepository clientRepository;
     private final MembershipPlanRepository membershipPlanRepository;
@@ -109,7 +112,9 @@ public class MembershipValidationService {
         return memberships.stream()
                 .filter(membership -> membership.getStartDate().isAfter(today))
                 .min(Comparator.comparing(ClientMembership::getStartDate))
-                .map(membership -> buildInvalidResponse(membership, "La membresía aún no inicia"))
+                .map(membership -> buildInvalidResponse(
+                        membership,
+                        "Token vigente desde: " + membership.getStartDate().format(DISPLAY_DATE_FORMATTER)))
                 .orElseGet(() -> {
                     ClientMembership membership = memberships.get(0);
                     if (membership.getEndDate().isBefore(today)) {

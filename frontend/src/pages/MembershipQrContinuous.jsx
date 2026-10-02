@@ -46,6 +46,10 @@ function formatAttendanceTime(dateString) {
   }).format(new Date(dateString));
 }
 
+function isPendingMembership(result) {
+  return result?.status === "PENDING";
+}
+
 function MembershipQrContinuous() {
   const { logout } = useAuth();
   const videoRef = useRef(null);
@@ -188,6 +192,14 @@ function MembershipQrContinuous() {
   const statusBadge = useMemo(() => {
     if (!result) {
       return null;
+    }
+
+    if (isPendingMembership(result)) {
+      return (
+        <Badge className="h-7 bg-amber-500/15 px-3 text-sm text-amber-700 hover:bg-amber-500/15">
+          Pendiente
+        </Badge>
+      );
     }
 
     return result.valid ? (

@@ -31,6 +31,28 @@ function firstName(fullName) {
   return String(fullName || "").trim().split(/\s+/)[0] || "usuario";
 }
 
+function formatDateOnly(dateString) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("es-PE", {
+    dateStyle: "medium",
+  }).format(new Date(dateString));
+}
+
+function startsInTheFuture(dateString) {
+  if (!dateString) {
+    return false;
+  }
+
+  const startDate = new Date(dateString);
+  if (Number.isNaN(startDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return startDate.getTime() > today.getTime();
+}
+
 function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
   const qrRef = useRef(null);
   const [shareStatus, setShareStatus] = useState("");
@@ -38,6 +60,7 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
   const accessToken = String(membership?.accessToken || membership?.qrPayload || "").trim();
   const qrPayload = String(membership?.qrPayload || accessToken).trim();
   const isValid = membership?.valid ?? Boolean(qrPayload);
+  const isFutureMembership = !isValid && startsInTheFuture(membership?.startDate);
   const whatsappPhone = normalizeWhatsappPhone(membership?.clientPhone);
 
   const buildShareMessage = (downloadUrl) => {
@@ -231,8 +254,19 @@ function MembershipQrCard({ membership, onCopyToken, onCreateQrLink }) {
 
       <div className="mx-auto w-full max-w-sm space-y-3">
         <div className="space-y-1 text-center">
-          <Badge variant={isValid ? "default" : "destructive"} className="mx-auto w-fit">
-            {isValid ? "Token activo" : "Token no válido"}
+          <Badge
+            variant={isValid || isFutureMembership ? "default" : "destructive"}
+            className={
+              isFutureMembership
+                ? "mx-auto w-fit bg-amber-500/15 text-amber-700 hover:bg-amber-500/15"
+                : "mx-auto w-fit"
+            }
+          >
+            {isValid
+              ? "Token activo"
+              : isFutureMembership
+                ? `Token vigente desde: ${formatDateOnly(membership.startDate)}`
+                : "Token no válido"}
           </Badge>
           <h3 className="text-lg font-semibold leading-tight">{membership.clientName}</h3>
           <p className="text-sm text-muted-foreground">Plan {membership.planName}</p>

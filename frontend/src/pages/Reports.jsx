@@ -36,8 +36,10 @@ import { cn } from "@/lib/utils";
 const REPORT_TYPE_OPTIONS = [
   { value: "daily", label: "Diario" },
   { value: "monthly", label: "Mensual" },
+  { value: "memberships", label: "Matrículas" },
 ];
 const MONTHLY_MOVEMENTS_PAGE_SIZE = 10;
+const MEMBERSHIP_MOVEMENT_TYPES = new Set(["MEMBERSHIP_SALE", "MEMBERSHIP_RENEWAL"]);
 
 function buildPaginationItems(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -382,7 +384,7 @@ function Reports() {
   }, [handleUnauthorized, month]);
 
   useEffect(() => {
-    if (reportType !== "monthly") {
+    if (reportType !== "monthly" && reportType !== "memberships") {
       return;
     }
 
@@ -439,6 +441,7 @@ function Reports() {
     () => monthOptions.find((option) => option.value === month) ?? monthOptions[0],
     [month, monthOptions]
   );
+  const isMonthlyReportType = reportType === "monthly" || reportType === "memberships";
   const dailyCashRevenue = dailyReport?.cashRevenue ?? dailyReport?.cashRegister?.cashIncome ?? 0;
   const dailyYapeRevenue = dailyReport?.yapeRevenue ?? dailyReport?.cashRegister?.yapeIncome ?? 0;
   const dailyRevenueHint = `Efectivo ${formatCurrency(dailyCashRevenue)} · Yape ${formatCurrency(dailyYapeRevenue)}`;
@@ -555,16 +558,21 @@ function Reports() {
     },
   ];
   const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
-  const activeError = reportType === "monthly" ? error : dailyError;
+  const activeError = isMonthlyReportType ? error : dailyError;
   const dailyExpenses = dailyReport?.cashRegister?.expenses ?? [];
   const monthlyExpenses = report?.expenses ?? [];
   const monthlyMovements = report?.movements ?? [];
+  const monthlyMembershipMovements = monthlyMovements.filter((movement) =>
+    MEMBERSHIP_MOVEMENT_TYPES.has(movement.type)
+  );
+  const displayedMonthlyMovements =
+    reportType === "memberships" ? monthlyMembershipMovements : monthlyMovements;
   const totalMonthlyMovementPages = Math.max(
     1,
-    Math.ceil(monthlyMovements.length / MONTHLY_MOVEMENTS_PAGE_SIZE)
+    Math.ceil(displayedMonthlyMovements.length / MONTHLY_MOVEMENTS_PAGE_SIZE)
   );
   const monthlyMovementsPageStart = (monthlyMovementsPage - 1) * MONTHLY_MOVEMENTS_PAGE_SIZE;
-  const paginatedMonthlyMovements = monthlyMovements.slice(
+  const paginatedMonthlyMovements = displayedMonthlyMovements.slice(
     monthlyMovementsPageStart,
     monthlyMovementsPageStart + MONTHLY_MOVEMENTS_PAGE_SIZE
   );
@@ -572,10 +580,12 @@ function Reports() {
     monthlyMovementsPage,
     totalMonthlyMovementPages
   );
-  const visibleMonthlyMovementStart = monthlyMovements.length ? monthlyMovementsPageStart + 1 : 0;
+  const visibleMonthlyMovementStart = displayedMonthlyMovements.length
+    ? monthlyMovementsPageStart + 1
+    : 0;
   const visibleMonthlyMovementEnd = Math.min(
     monthlyMovementsPageStart + MONTHLY_MOVEMENTS_PAGE_SIZE,
-    monthlyMovements.length
+    displayedMonthlyMovements.length
   );
 
   useEffect(() => {
@@ -584,7 +594,7 @@ function Reports() {
 
   useEffect(() => {
     setMonthlyMovementsPage(1);
-  }, [month]);
+  }, [month, reportType]);
 
   const renderMonthlyMovementsPagination = () =>
     totalMonthlyMovementPages > 1 && (
@@ -626,7 +636,7 @@ function Reports() {
         </Pagination>
         <p className="text-sm text-muted-foreground">
           Mostrando {visibleMonthlyMovementStart}-{visibleMonthlyMovementEnd} de{" "}
-          {monthlyMovements.length}
+          {displayedMonthlyMovements.length}
         </p>
       </div>
     );
@@ -674,7 +684,7 @@ function Reports() {
             </ComboboxContent>
           </Combobox>
 
-          {reportType === "monthly" ? (
+          {isMonthlyReportType ? (
             <Combobox
               items={monthOptions}
               value={selectedMonthOption}
@@ -859,6 +869,110 @@ function Reports() {
             </div>
           </div>
         </PageCard>
+      ) : reportType === "memberships" ? (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-26 rounded-lg sm:h-28 sm:rounded-xl" />
+              ))
+            ) : (
+              <>
+                <ReportStat
+                  icon={UserPlus}
+                  label="Matriculados"
+                  value={report?.newMemberships ?? 0}
+                  hint={formatCurrency(report?.newMembershipRevenue ?? 0)}
+                />
+                <ReportStat
+                  icon={Repeat2}
+                  label="Renovaciones"
+                  value={report?.renewals ?? 0}
+                  hint={formatCurrency(report?.renewalRevenue ?? 0)}
+                />
+                <ReportStat
+                  icon={CreditCard}
+                  label="Total matrículas"
+                  value={report?.totalMemberships ?? 0}
+                  hint={formatCurrency(report?.membershipRevenue ?? 0)}
+                />
+                <ReportStat
+                  icon={WalletCards}
+                  label="Ingreso total"
+                  value={formatCurrency(report?.membershipRevenue ?? 0)}
+                  className="col-span-2 sm:col-span-1"
+                />
+              </>
+            )}
+          </div>
+
+          <PageCard title="Matrículas del mes">
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : displayedMonthlyMovements.length ? (
+              <>
+                <div className="grid gap-3 md:hidden">
+                  {paginatedMonthlyMovements.map((movement) => (
+                    <ReportMovementMobileCard
+                      key={movement.id}
+                      movement={movement}
+                      canViewAudit={canViewAudit}
+                    />
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto rounded-xl border md:block">
+                  <table className="w-full min-w-[760px] text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="py-3 pl-4 pr-4 font-medium">Fecha</th>
+                        <th className="py-3 pr-4 font-medium">Tipo</th>
+                        <th className="py-3 pr-4 font-medium">Cliente</th>
+                        <th className="py-3 pr-4 font-medium">Detalle</th>
+                        {canViewAudit && (
+                          <th className="py-3 pr-4 font-medium">Realizado por</th>
+                        )}
+                        <th className="py-3 pr-4 font-medium">Pago</th>
+                        <th className="py-3 pr-4 font-medium text-right">Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedMonthlyMovements.map((movement) => (
+                        <tr key={movement.id} className="border-b last:border-0">
+                          <td className="py-3 pl-4 pr-4 whitespace-nowrap">
+                            {formatDate(movement.createdAt)}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <Badge variant="secondary">
+                              {MOVEMENT_TYPE_LABELS[movement.type] ?? movement.type}
+                            </Badge>
+                          </td>
+                          <td className="py-3 pr-4">{movement.clientName ?? "—"}</td>
+                          <td className="py-3 pr-4">{movement.description}</td>
+                          {canViewAudit && (
+                            <td className="py-3 pr-4">{movement.createdByName ?? "—"}</td>
+                          )}
+                          <td className="py-3 pr-4 whitespace-nowrap">
+                            {formatPaymentMethod(movement)}
+                          </td>
+                          <td className="py-3 pr-4 text-right font-medium">
+                            {formatCurrency(movement.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {renderMonthlyMovementsPagination()}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No hay matrículas en este mes.</p>
+            )}
+          </PageCard>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-6">
@@ -1010,7 +1124,7 @@ function Reports() {
                   <Skeleton key={index} className="h-14 w-full rounded-lg" />
                 ))}
               </div>
-            ) : report?.movements?.length ? (
+            ) : displayedMonthlyMovements.length ? (
               <>
                 <div className="grid gap-3 md:hidden">
                   {paginatedMonthlyMovements.map((movement) => (

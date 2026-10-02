@@ -33,6 +33,10 @@ function formatAttendanceTime(dateString) {
   }).format(new Date(dateString));
 }
 
+function isPendingMembership(result) {
+  return result?.status === "PENDING";
+}
+
 function MembershipValidation() {
   const { logout } = useAuth();
   const videoRef = useRef(null);
@@ -110,6 +114,14 @@ function MembershipValidation() {
   const statusBadge = useMemo(() => {
     if (!result) {
       return null;
+    }
+
+    if (isPendingMembership(result)) {
+      return (
+        <Badge className="w-fit bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
+          Pendiente
+        </Badge>
+      );
     }
 
     return result.valid ? (
@@ -207,6 +219,8 @@ function MembershipValidation() {
               <span>
                 {result.valid
                   ? "La membresía está habilitada para el acceso y la asistencia de hoy quedó confirmada."
+                  : isPendingMembership(result)
+                    ? "La membresía existe y quedará habilitada desde la fecha indicada."
                   : "La membresía existe, pero no está habilitada para acceso."}
               </span>
             </div>
