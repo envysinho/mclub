@@ -42,6 +42,7 @@ import {
   listClients,
   listMembershipPlans,
   listProducts,
+  renewMembership,
   sellProduct,
 } from "@/lib/api";
 import {
@@ -127,10 +128,23 @@ function formatDisplayDate(dateValue) {
   return `${day}/${month}/${year}`;
 }
 
+function dateValueToInput(dateValue) {
+  if (!dateValue) {
+    return "";
+  }
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return formatDateInput(date);
+}
+
 function addDaysToInputDate(dateValue, days) {
   const [year, month, day] = dateValue.split("-").map(Number);
   const date = new Date(year, month - 1, day);
-  date.setDate(date.getDate() + days);
+  date.setDate(date.getDate() + Number(days || 0));
   return formatDateInput(date);
 }
 
@@ -462,6 +476,19 @@ function Dashboard() {
 
   const selectedPlan = plans.find((plan) => plan.id === Number(saleForm.planId));
   const selectedProduct = products.find((product) => product.id === Number(saleForm.productId));
+  const selectedClient = clients.find((client) => client.id === Number(saleForm.clientId));
+  const selectedClientActiveMembership =
+    saleForm.type === "membership" && saleForm.clientMode === "existing"
+      ? selectedClient?.activeMembership
+      : null;
+  const selectedClientActiveMembershipEndDate = dateValueToInput(
+    selectedClientActiveMembership?.endDate
+  );
+  const isMembershipRenewal = Boolean(selectedClientActiveMembershipEndDate);
+  const selectedClientMembershipNotice =
+    selectedClientActiveMembership?.status === "PENDING"
+      ? "El cliente tiene una membresía programada"
+      : "El cliente tiene una membresía activa";
   const saleAmount =
     saleForm.type === "membership"
       ? selectedPlan?.price
@@ -546,7 +573,8 @@ function Dashboard() {
         if (!clientId) {
           throw new Error("Selecciona o crea un cliente para vender una membresía");
         }
-        const assignedMembership = await assignMembership(
+        const saveMembership = isMembershipRenewal ? renewMembership : assignMembership;
+        const assignedMembership = await saveMembership(
           {
             clientId,
             planId: Number(saleForm.planId),
@@ -601,7 +629,11 @@ function Dashboard() {
 
   const handleMembershipPlanChange = (planId) => {
     const plan = plans.find((currentPlan) => currentPlan.id === Number(planId));
-    const dates = plan ? getMembershipDates(plan, saleForm.startDate || undefined) : {
+    const renewalStartDate = selectedClientActiveMembershipEndDate
+      ? addDaysToInputDate(selectedClientActiveMembershipEndDate, 1)
+      : "";
+    const startDate = renewalStartDate || saleForm.startDate || undefined;
+    const dates = plan ? getMembershipDates(plan, startDate) : {
       startDate: "",
       endDate: "",
     };
@@ -619,6 +651,52 @@ function Dashboard() {
       ...saleForm,
       startDate,
       endDate: selectedPlan && startDate ? addDaysToInputDate(startDate, selectedPlan.durationDays) : "",
+    });
+  };
+
+  const buildMembershipDatesForClient = (client, plan = selectedPlan) => {
+    const currentEndDate = dateValueToInput(client?.activeMembership?.endDate);
+    const startDate = currentEndDate
+      ? addDaysToInputDate(currentEndDate, 1)
+      : saleForm.startDate || formatDateInput(new Date());
+
+    return {
+      startDate,
+      endDate: plan && startDate ? addDaysToInputDate(startDate, plan.durationDays) : "",
+    };
+  };
+
+  const handleSaleTypeChange = (type) => {
+    if (type === "membership") {
+      const dates = buildMembershipDatesForClient(selectedClient);
+      setSaleForm({
+        ...saleForm,
+        type,
+        productId: "",
+        startDate: dates.startDate,
+        endDate: dates.endDate,
+      });
+      return;
+    }
+
+    setSaleForm({
+      ...saleForm,
+      type,
+      planId: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
+
+  const handleExistingSaleClientChange = (clientId) => {
+    const client = clients.find((currentClient) => currentClient.id === Number(clientId));
+    const dates = buildMembershipDatesForClient(client);
+
+    setSaleForm({
+      ...saleForm,
+      clientId,
+      startDate: saleForm.type === "membership" ? dates.startDate : saleForm.startDate,
+      endDate: saleForm.type === "membership" ? dates.endDate : saleForm.endDate,
     });
   };
 
@@ -722,24 +800,14 @@ function Dashboard() {
                 <button
                   type="button"
                   className={saleTypeButtonClass("membership")}
-                  onClick={() =>
-                    setSaleForm({ ...saleForm, type: "membership", productId: "" })
-                  }
+                  onClick={() => handleSaleTypeChange("membership")}
                 >
                   Membresía
                 </button>
                 <button
                   type="button"
                   className={saleTypeButtonClass("product")}
-                  onClick={() =>
-                    setSaleForm({
-                      ...saleForm,
-                      type: "product",
-                      planId: "",
-                      startDate: "",
-                      endDate: "",
-                    })
-                  }
+                  onClick={() => handleSaleTypeChange("product")}
                 >
                   Producto
                 </button>
@@ -785,9 +853,7 @@ function Dashboard() {
                     id="saleClient"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
                     value={saleForm.clientId}
-                    onChange={(event) =>
-                      setSaleForm({ ...saleForm, clientId: event.target.value })
-                    }
+                    onChange={(event) => handleExistingSaleClientChange(event.target.value)}
                     disabled={isSaleOptionsLoading}
                     required={saleForm.type === "membership"}
                   >
@@ -805,6 +871,14 @@ function Dashboard() {
                       </option>
                     ))}
                   </select>
+                  {selectedClientActiveMembership && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      {selectedClientMembershipNotice} hasta{" "}
+                      {formatDisplayDate(selectedClientActiveMembershipEndDate)}. La nueva
+                      membresía iniciará desde el{" "}
+                      {formatDisplayDate(addDaysToInputDate(selectedClientActiveMembershipEndDate, 1))}.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="grid gap-4 rounded-lg border bg-background/50 p-3">
