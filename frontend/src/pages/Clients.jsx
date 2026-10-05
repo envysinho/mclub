@@ -991,6 +991,7 @@ function Clients({ module = "clients", searchQuery = "" }) {
   const isClientsModule = module === "clients";
   const isMembershipsModule = module === "memberships";
   const canManageClients = user?.role === "SUDO" || user?.role === "ADMIN";
+  const canRenewMemberships = user?.role === "SUDO" || user?.role === "ADMIN" || user?.role === "USER";
   const canManageCatalog = user?.role === "SUDO" || user?.role === "ADMIN";
   const canViewAudit = user?.role === "SUDO" || user?.role === "ADMIN";
   const canViewMembershipTokens = user?.role === "SUDO";
@@ -1584,9 +1585,9 @@ function Clients({ module = "clients", searchQuery = "" }) {
                           {renderAttendanceButtons(client)}
                           {renderWhatsappReminderButton(client)}
                           {canViewMembershipTokens && renderMembershipTokenButton(client)}
+                          {canRenewMemberships && renderRenewalButton(client)}
                           {canManageClients && (
                             <>
-                              {renderRenewalButton(client)}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1668,9 +1669,9 @@ function Clients({ module = "clients", searchQuery = "" }) {
                         {renderAttendanceButtons(client)}
                         {renderWhatsappReminderButton(client)}
                         {canViewMembershipTokens && renderMembershipTokenButton(client)}
+                        {canRenewMemberships && renderRenewalButton(client)}
                         {canManageClients && (
                           <>
-                            {renderRenewalButton(client)}
                             {renderClientStatusSwitch(client)}
                             <Button
                               size="sm"

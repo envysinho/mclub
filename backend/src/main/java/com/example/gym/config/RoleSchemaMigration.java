@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class RoleSchemaMigration implements ApplicationRunner {
 
     private static final String ROLE_CHECK_CONSTRAINT = "users_role_check";
+    private static final String MEMBERSHIP_STATUS_CHECK_CONSTRAINT = "client_memberships_status_check";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -33,6 +34,13 @@ public class RoleSchemaMigration implements ApplicationRunner {
                 ALTER TABLE users
                 ADD CONSTRAINT users_role_check
                 CHECK (role IN ('SUDO', 'ADMIN', 'USER', 'ACCESS'))
+                """);
+
+        dropExistingMembershipStatusChecks();
+        jdbcTemplate.execute("""
+                ALTER TABLE client_memberships
+                ADD CONSTRAINT client_memberships_status_check
+                CHECK (status IN ('ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED'))
                 """);
     }
 
@@ -65,6 +73,32 @@ public class RoleSchemaMigration implements ApplicationRunner {
         }
 
         jdbcTemplate.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS " + ROLE_CHECK_CONSTRAINT);
+    }
+
+    private void dropExistingMembershipStatusChecks() {
+        List<String> constraints = jdbcTemplate.queryForList("""
+                SELECT c.conname
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                WHERE n.nspname = current_schema()
+                  AND t.relname = 'client_memberships'
+                  AND c.contype = 'c'
+                  AND pg_get_constraintdef(c.oid) ILIKE '%status%'
+                  AND (
+                    pg_get_constraintdef(c.oid) ILIKE '%ACTIVE%'
+                    OR pg_get_constraintdef(c.oid) ILIKE '%PENDING%'
+                    OR pg_get_constraintdef(c.oid) ILIKE '%EXPIRED%'
+                    OR pg_get_constraintdef(c.oid) ILIKE '%CANCELLED%'
+                  )
+                """, String.class);
+
+        for (String constraint : constraints) {
+            jdbcTemplate.execute("ALTER TABLE client_memberships DROP CONSTRAINT IF EXISTS " + quoteIdentifier(constraint));
+        }
+
+        jdbcTemplate.execute("ALTER TABLE client_memberships DROP CONSTRAINT IF EXISTS "
+                + MEMBERSHIP_STATUS_CHECK_CONSTRAINT);
     }
 
     private String quoteIdentifier(String identifier) {
